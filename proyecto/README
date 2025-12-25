@@ -1,0 +1,100 @@
+🚀 Ejecución rápida del proyecto
+1. Apagar contenedores
+docker compose down
+
+2. Reconstruir imágenes (si cambió Dockerfile o requirements)
+docker compose build --no-cache
+
+3. Levantar todos los servicios
+docker compose up -d
+
+📌 Acceso a las herramientas
+🔷 Streamlit (aplicación web del proyecto)
+
+Abrir en el navegador:
+
+http://localhost:8501
+
+🔷 Jupyter Lab (ejecución de notebooks)
+
+Abrir en el navegador:
+
+http://localhost:8888
+
+
+Te pedirá el token definido en .env (por ejemplo pep1).
+
+🔷 Ver logs del servicio Streamlit (si hay errores)
+docker logs streamlit_pep
+
+🔷 Ver contenedores activos
+docker ps
+
+
+🗺 Uso de QGIS con el proyecto
+
+
+1. Abrir la geodatabase del proyecto
+   - En QGIS, ir al panel **Explorador**.
+   - Navegar hasta la carpeta del proyecto:
+     `data/raw/Carga de datos/`.
+     (si no existe, crearla. validar que posea los datos del proyecto)
+   - Localizar el archivo `geodatabase_proyecto.gpkg`.
+   - Hacer doble clic sobre el archivo para ver las capas disponibles
+     (por ejemplo `comunas_rm_censo`, `establecimientos_salud`, etc.).
+   - Arrastrar al lienzo las capas que se quieran visualizar.
+
+2. Configurar el SRC del proyecto
+   - Las capas del proyecto usan **EPSG:32719 – WGS 84 / UTM zone 19S**.
+   - En la barra de estado de QGIS (abajo a la derecha), hacer clic sobre el código EPSG.
+   - Seleccionar `EPSG:32719` como SRC del proyecto.
+   - Asegurarse de que la **reproyección al vuelo** esté habilitada.
+
+3. Añadir un mapa base real (OpenStreetMap)
+   - En el panel **Explorador**, buscar la sección **XYZ Tiles**.
+   - Si existe **OpenStreetMap**, arrastrarlo directamente al lienzo.
+   - Si no existe:
+     - Botón derecho sobre **XYZ Tiles** → **Nueva conexión…**.
+     - Nombre: `OpenStreetMap`.
+     - URL: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`.
+     - Guardar y luego arrastrar `OpenStreetMap` al lienzo.
+
+4. Verificar la ubicación de Santiago
+   - Añadir la capa `comunas_rm_censo` desde el GeoPackage.
+   - Con el mapa base activo, comprobar que el contorno de Santiago y las comunas
+     se alinean correctamente con el mapa real.
+
+📓 Notebooks clave para generar y revisar el GeoPackage
+
+1. Estructura de notebooks
+   - Los notebooks del proyecto están en la carpeta:
+     `notebooks/`
+   - El flujo principal para construir la geodatabase parte en:
+     `01_data_acquisition.ipynb`.
+
+2. Notebook 00_template.py
+   - El archivo `notebooks/00_template.py` define las rutas base del proyecto:
+     - Carpeta de datos crudos: `data/raw/`
+     - Carpeta de carga: `data/raw/Carga de datos/`
+     - Ruta del GeoPackage: `data/raw/Carga de datos/geodatabase_proyecto.gpkg`
+   - También crea las carpetas necesarias si no existen.
+
+3. Notebook 01_data_acquisition.ipynb
+   - Es el cuaderno que **construye y verifica** el GeoPackage del proyecto.
+   - Pasos típicos:
+     1. Ejecutar la celda 1, que corre `%run ./00_template.py` y configura las rutas.
+     2. En la celda de parámetros, mantener:
+        - `AUTO_EJECUTAR_SCRIPTS = True`
+        - Opcionalmente `FORZAR_REEJECUCION = True` para regenerar los datos.
+     3. Ejecutar la celda que llama a los scripts `RM_clean_data.py` y `ETL.py` ubicados en
+        `data/raw/Carga de datos/`.
+     4. Verificar en las celdas siguientes que:
+        - Se encuentra el archivo `geodatabase_proyecto.gpkg`.
+        - Se listan las capas disponibles (por ejemplo `comunas_rm_censo`, etc.).
+
+4. Relación con QGIS y Streamlit
+   - Una vez ejecutado `01_data_acquisition.ipynb`, el archivo
+     `data/raw/Carga de datos/geodatabase_proyecto.gpkg` queda listo para:
+     - Ser usado por la app de Streamlit.
+     - Ser cargado en QGIS siguiendo los pasos de la sección anterior.
+
