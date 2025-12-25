@@ -13,7 +13,7 @@ services:
       - "${POSTGRES_PORT}:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,15 +55,27 @@ services:
     depends_on:
       - postgis
     restart: unless-stopped
+
+  otp_build:
+    image: opentripplanner/opentripplanner:latest
+    container_name: otp_build_pep
+    volumes:
+      - ./data/otp:/var/opentripplanner
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx4G
+    command: ["--build", "--save"]
+    restart: "no"
+
   otp:
     image: opentripplanner/opentripplanner:latest
     container_name: otp_pep
     ports:
       - "8080:8080"
     volumes:
-      - ./data/otp:/var/otp
-    entrypoint: ["java","-Xmx4G","-jar","/usr/local/opentripplanner/otp.jar"]
-    command: ["--build", "--save", "--serve", "/var/otp"]
+      - ./data/otp:/var/opentripplanner
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx4G
+    command: ["--load", "--serve"]
     restart: unless-stopped
 
   web:
