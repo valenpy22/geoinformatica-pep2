@@ -1,5 +1,205 @@
 cod_comuna,comuna,categoria,t_min_otp
-13,13,salud,4.25
-13,13,micro,3.316666666666667
-13,13,almacenes_barrio,4.816666666666666
-13,13,educacion_superior,
+13130,San Miguel,salud,3.7666666666666666
+13130,San Miguel,micro,0.65
+13130,San Miguel,almacenes_barrio,5.433333333333334
+13130,San Miguel,educacion_superior,
+13118,Macul,salud,8.933333333333334
+13118,Macul,micro,1.6666666666666667
+13118,Macul,almacenes_barrio,2.466666666666667
+13118,Macul,educacion_superior,
+13119,Maipú,salud,32.333333333333336
+13119,Maipú,micro,8.666666666666666
+13119,Maipú,almacenes_barrio,38.333333333333336
+13119,Maipú,educacion_superior,
+13123,Providencia,salud,2.716666666666667
+13123,Providencia,micro,0.5166666666666667
+13123,Providencia,almacenes_barrio,1.8166666666666669
+13123,Providencia,educacion_superior,1.6666666666666667
+13131,San Ramón,salud,2.833333333333333
+13131,San Ramón,micro,1.7833333333333334
+13131,San Ramón,almacenes_barrio,
+13131,San Ramón,educacion_superior,
+13120,Ñuñoa,salud,3.816666666666667
+13120,Ñuñoa,micro,1.1333333333333333
+13120,Ñuñoa,almacenes_barrio,2.35
+13120,Ñuñoa,educacion_superior,
+13603,Isla de Maipo,salud,51.43333333333333
+13603,Isla de Maipo,micro,
+13603,Isla de Maipo,almacenes_barrio,
+13603,Isla de Maipo,educacion_superior,
+13601,Talagante,salud,132.46666666666667
+13601,Talagante,micro,
+13601,Talagante,almacenes_barrio,152.81666666666666
+13601,Talagante,educacion_superior,
+13102,Cerrillos,salud,
+13102,Cerrillos,micro,2.6
+13102,Cerrillos,almacenes_barrio,6.333333333333333
+13102,Cerrillos,educacion_superior,
+13113,La Reina,salud,26.6
+13113,La Reina,micro,10.75
+13113,La Reina,almacenes_barrio,14.066666666666666
+13113,La Reina,educacion_superior,
+13302,Lampa,salud,36.23333333333333
+13302,Lampa,micro,
+13302,Lampa,almacenes_barrio,38.06666666666667
+13302,Lampa,educacion_superior,
+13202,Pirque,salud,68.76666666666667
+13202,Pirque,micro,
+13202,Pirque,almacenes_barrio,
+13202,Pirque,educacion_superior,
+13105,El Bosque,salud,3.4
+13105,El Bosque,micro,4.883333333333334
+13105,El Bosque,almacenes_barrio,
+13105,El Bosque,educacion_superior,
+13108,Independencia,salud,5.916666666666667
+13108,Independencia,micro,1.45
+13108,Independencia,almacenes_barrio,1.8666666666666667
+13108,Independencia,educacion_superior,
+13403,Calera de Tango,salud,26.683333333333334
+13403,Calera de Tango,micro,
+13403,Calera de Tango,almacenes_barrio,11.816666666666666
+13403,Calera de Tango,educacion_superior,
+13117,Lo Prado,salud,
+13117,Lo Prado,micro,0.8
+13117,Lo Prado,almacenes_barrio,
+13117,Lo Prado,educacion_superior,
+13301,Colina,salud,
+13301,Colina,micro,
+13301,Colina,almacenes_barrio,
+13301,Colina,educacion_superior,
+13127,Recoleta,salud,8.1
+13127,Recoleta,micro,0.5166666666666667
+13127,Recoleta,almacenes_barrio,5.016666666666667
+13127,Recoleta,educacion_superior,
+13402,Buin,salud,29.95
+13402,Buin,micro,
+13402,Buin,almacenes_barrio,
+13402,Buin,educacion_superior,34.8
+13128,Renca,salud,
+13128,Renca,micro,3.1666666666666665
+13128,Renca,almacenes_barrio,
+13128,Renca,educacion_superior,
+13124,Pudahuel,salud,56.16666666666666
+13124,Pudahuel,micro,54.05
+13124,Pudahuel,almacenes_barrio,63.583333333333336
+13124,Pudahuel,educacion_superior,
+13107,Huechuraba,salud,
+13107,Huechuraba,micro,1.7833333333333334
+13107,Huechuraba,almacenes_barrio,7.733333333333333
+13107,Huechuraba,educacion_superior,
+13501,Melipilla,salud,93.66666666666669
+13501,Melipilla,micro,
+13501,Melipilla,almacenes_barrio,
+13501,Melipilla,educacion_superior,
+13504,María Pinto,salud,25.933333333333334
+13504,María Pinto,micro,
+13504,María Pinto,almacenes_barrio,24.85
+13504,María Pinto,educacion_superior,
+13112,La Pintana,salud,37.46666666666667
+13112,La Pintana,micro,1.2833333333333334
+13112,La Pintana,almacenes_barrio,
+13112,La Pintana,educacion_superior,
+13126,Quinta Normal,salud,
+13126,Quinta Normal,micro,2.85
+13126,Quinta Normal,almacenes_barrio,3.0166666666666666
+13126,Quinta Normal,educacion_superior,
+13111,La Granja,salud,
+13111,La Granja,micro,1.7666666666666666
+13111,La Granja,almacenes_barrio,
+13111,La Granja,educacion_superior,
+13201,Puente Alto,salud,9.633333333333333
+13201,Puente Alto,micro,3.283333333333333
+13201,Puente Alto,almacenes_barrio,10.983333333333333
+13201,Puente Alto,educacion_superior,
+13404,Paine,salud,19.55
+13404,Paine,micro,
+13404,Paine,almacenes_barrio,
+13404,Paine,educacion_superior,
+13132,Vitacura,salud,
+13132,Vitacura,micro,2.183333333333333
+13132,Vitacura,almacenes_barrio,3.0
+13132,Vitacura,educacion_superior,
+13125,Quilicura,salud,
+13125,Quilicura,micro,1.65
+13125,Quilicura,almacenes_barrio,2.2666666666666666
+13125,Quilicura,educacion_superior,
+13101,Santiago,salud,4.8
+13101,Santiago,micro,1.2166666666666666
+13101,Santiago,almacenes_barrio,3.6166666666666663
+13101,Santiago,educacion_superior,1.9
+13503,Curacaví,salud,34.083333333333336
+13503,Curacaví,micro,
+13503,Curacaví,almacenes_barrio,
+13503,Curacaví,educacion_superior,
+13605,Peñaflor,salud,2.533333333333333
+13605,Peñaflor,micro,
+13605,Peñaflor,almacenes_barrio,5.016666666666667
+13605,Peñaflor,educacion_superior,
+13602,El Monte,salud,102.28333333333332
+13602,El Monte,micro,
+13602,El Monte,almacenes_barrio,
+13602,El Monte,educacion_superior,
+13104,Conchalí,salud,
+13104,Conchalí,micro,0.5666666666666667
+13104,Conchalí,almacenes_barrio,
+13104,Conchalí,educacion_superior,
+13109,La Cisterna,salud,5.433333333333334
+13109,La Cisterna,micro,4.066666666666666
+13109,La Cisterna,almacenes_barrio,4.333333333333333
+13109,La Cisterna,educacion_superior,
+13106,Estación Central,salud,
+13106,Estación Central,micro,2.1
+13106,Estación Central,almacenes_barrio,2.05
+13106,Estación Central,educacion_superior,5.666666666666667
+13401,San Bernardo,salud,
+13401,San Bernardo,micro,0.6833333333333333
+13401,San Bernardo,almacenes_barrio,9.3
+13401,San Bernardo,educacion_superior,
+13115,Lo Barnechea,salud,
+13115,Lo Barnechea,micro,
+13115,Lo Barnechea,almacenes_barrio,
+13115,Lo Barnechea,educacion_superior,
+13502,Alhué,salud,27.0
+13502,Alhué,micro,
+13502,Alhué,almacenes_barrio,
+13502,Alhué,educacion_superior,
+13203,San José de Maipo,salud,
+13203,San José de Maipo,micro,
+13203,San José de Maipo,almacenes_barrio,
+13203,San José de Maipo,educacion_superior,
+13103,Cerro Navia,salud,10.183333333333334
+13103,Cerro Navia,micro,5.083333333333333
+13103,Cerro Navia,almacenes_barrio,
+13103,Cerro Navia,educacion_superior,
+13116,Lo Espejo,salud,
+13116,Lo Espejo,micro,0.5
+13116,Lo Espejo,almacenes_barrio,0.4166666666666667
+13116,Lo Espejo,educacion_superior,
+13110,La Florida,salud,
+13110,La Florida,micro,14.916666666666666
+13110,La Florida,almacenes_barrio,
+13110,La Florida,educacion_superior,
+13303,Tiltil,salud,87.15
+13303,Tiltil,micro,
+13303,Tiltil,almacenes_barrio,
+13303,Tiltil,educacion_superior,
+13129,San Joaquín,salud,
+13129,San Joaquín,micro,1.3666666666666667
+13129,San Joaquín,almacenes_barrio,
+13129,San Joaquín,educacion_superior,
+13604,Padre Hurtado,salud,
+13604,Padre Hurtado,micro,78.7
+13604,Padre Hurtado,almacenes_barrio,68.78333333333333
+13604,Padre Hurtado,educacion_superior,
+13121,Pedro Aguirre Cerda,salud,5.65
+13121,Pedro Aguirre Cerda,micro,1.75
+13121,Pedro Aguirre Cerda,almacenes_barrio,
+13121,Pedro Aguirre Cerda,educacion_superior,
+13505,San Pedro,salud,46.78333333333333
+13505,San Pedro,micro,
+13505,San Pedro,almacenes_barrio,
+13505,San Pedro,educacion_superior,
+13122,Peñalolén,salud,
+13122,Peñalolén,micro,41.833333333333336
+13122,Peñalolén,almacenes_barrio,
+13122,Peñalolén,educacion_superior,17.716666666666665

@@ -1,0 +1,4 @@
+cod_comuna,comuna,error
+13114,Las Condes,name 'time' is not defined
+13114,Las Condes,"HTTPConnectionPool(host='otp', port=8080): Read timed out. (read timeout=45)"
+13114,Las Condes,"HTTPConnectionPool(host='otp', port=8080): Read timed out. (read timeout=180)"

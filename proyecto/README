@@ -1,100 +1,214 @@
-🚀 Ejecución rápida del proyecto
-1. Apagar contenedores
+# Proyecto Geoinformática (PEP) – Stack Docker (PostGIS + Jupyter + Streamlit + OTP)
+
+Este repositorio se levanta con **Docker Compose** e incluye:
+
+- **PostGIS** (BD espacial)
+- **JupyterLab** (notebooks)
+- **Streamlit** (app web)
+- **OpenTripPlanner (OTP)** (accesibilidad / transporte público)
+
+> OTP ya está incluido en `docker-compose.yml`. No necesitas instalar OTP local.
+
+---
+
+## 0) Requisitos
+
+- Docker + Docker Compose v2 (`docker compose ...`)
+- Puertos libres: **5432** (PostGIS), **8888** (Jupyter), **8501** (Streamlit), **8080** (OTP), **5050** (pgAdmin)
+- (Opcional) QGIS para visualizar el GeoPackage.
+
+---
+
+## 1) Estructura de carpetas importante
+
+- `notebooks/` notebooks del proyecto (monta en `/home/jovyan/work`)
+- `data/` datos del proyecto (monta en `/home/jovyan/data`)
+- `outputs/` salidas (CSV/Parquet/figuras) (monta en `/home/jovyan/outputs`)
+- `app/` aplicación Streamlit (monta en `/home/jovyan/app`)
+- `data/otp/` insumos y grafo de OTP (persistente)
+
+---
+
+## 2) Variables de entorno (`.env`)
+
+Crea/asegura un archivo `.env` en la raíz del repo.
+
+Ejemplo mínimo:
+
+```bash
+POSTGRES_DB=pep
+POSTGRES_USER=pep
+POSTGRES_PASSWORD=pep
+POSTGRES_PORT=5432
+
+JUPYTER_PORT=8888
+JUPYTER_TOKEN=pep1
+
+## 3) Levantar el proyecto (paso a paso)
+
+### 3.1 Apagar contenedores (si venías de intentos previos)
+```bash
 docker compose down
+```
 
-2. Reconstruir imágenes (si cambió Dockerfile o requirements)
+### 3.2 Reconstruir imágenes (si cambió Dockerfile o requirements)
+```bash
 docker compose build --no-cache
+```
 
-3. Levantar todos los servicios
+### 3.3 Levantar todos los servicios
+```bash
 docker compose up -d
+```
 
-📌 Acceso a las herramientas
-🔷 Streamlit (aplicación web del proyecto)
-
-Abrir en el navegador:
-
-http://localhost:8501
-
-🔷 Jupyter Lab (ejecución de notebooks)
-
-Abrir en el navegador:
-
-http://localhost:8888
-
-
-Te pedirá el token definido en .env (por ejemplo pep1).
-
-🔷 Ver logs del servicio Streamlit (si hay errores)
-docker logs streamlit_pep
-
-🔷 Ver contenedores activos
+Verifica que estén corriendo:
+```bash
 docker ps
+```
 
+## 4) OTP (OpenTripPlanner): build del grafo y servicio
+En docker-compose.yml existen dos servicios relacionados a OTP:
 
-🗺 Uso de QGIS con el proyecto
+- otp_build: construye el grafo (build) y lo guarda en ./data/otp/
+- otp: carga el grafo y sirve la API en el puerto 8080
 
+### 4.1 ¿Qué debe existir en data/otp/?
+Dentro de:
+```bash
+data/otp/
+```
+OTP necesita (según tu caso):
+- un archivo OSM .pbf
+- uno o más GTFS .zip (transporte público)
 
-1. Abrir la geodatabase del proyecto
-   - En QGIS, ir al panel **Explorador**.
-   - Navegar hasta la carpeta del proyecto:
-     `data/raw/Carga de datos/`.
-     (si no existe, crearla. validar que posea los datos del proyecto)
-   - Localizar el archivo `geodatabase_proyecto.gpkg`.
-   - Hacer doble clic sobre el archivo para ver las capas disponibles
-     (por ejemplo `comunas_rm_censo`, `establecimientos_salud`, etc.).
-   - Arrastrar al lienzo las capas que se quieran visualizar.
+El nombre exacto no importa: OTP escanea la carpeta.
 
-2. Configurar el SRC del proyecto
-   - Las capas del proyecto usan **EPSG:32719 – WGS 84 / UTM zone 19S**.
-   - En la barra de estado de QGIS (abajo a la derecha), hacer clic sobre el código EPSG.
-   - Seleccionar `EPSG:32719` como SRC del proyecto.
-   - Asegurarse de que la **reproyección al vuelo** esté habilitada.
+### 4.2 Construir el grafo (solo cuando corresponde)
+Ejecuta el build si:
 
-3. Añadir un mapa base real (OpenStreetMap)
-   - En el panel **Explorador**, buscar la sección **XYZ Tiles**.
-   - Si existe **OpenStreetMap**, arrastrarlo directamente al lienzo.
-   - Si no existe:
-     - Botón derecho sobre **XYZ Tiles** → **Nueva conexión…**.
-     - Nombre: `OpenStreetMap`.
-     - URL: `https://tile.openstreetmap.org/{z}/{x}/{y}.png`.
-     - Guardar y luego arrastrar `OpenStreetMap` al lienzo.
+- es la primera vez,
 
-4. Verificar la ubicación de Santiago
-   - Añadir la capa `comunas_rm_censo` desde el GeoPackage.
-   - Con el mapa base activo, comprobar que el contorno de Santiago y las comunas
-     se alinean correctamente con el mapa real.
+- cambiaste el .pbf,
 
-📓 Notebooks clave para generar y revisar el GeoPackage
+- cambiaste el/los GTFS,
 
-1. Estructura de notebooks
-   - Los notebooks del proyecto están en la carpeta:
-     `notebooks/`
-   - El flujo principal para construir la geodatabase parte en:
-     `01_data_acquisition.ipynb`.
+- o borraste graph.obj.
 
-2. Notebook 00_template.py
-   - El archivo `notebooks/00_template.py` define las rutas base del proyecto:
-     - Carpeta de datos crudos: `data/raw/`
-     - Carpeta de carga: `data/raw/Carga de datos/`
-     - Ruta del GeoPackage: `data/raw/Carga de datos/geodatabase_proyecto.gpkg`
-   - También crea las carpetas necesarias si no existen.
+Comando recomendado:
+```bash
+docker compose run --rm otp_build
+```
 
-3. Notebook 01_data_acquisition.ipynb
-   - Es el cuaderno que **construye y verifica** el GeoPackage del proyecto.
-   - Pasos típicos:
-     1. Ejecutar la celda 1, que corre `%run ./00_template.py` y configura las rutas.
-     2. En la celda de parámetros, mantener:
-        - `AUTO_EJECUTAR_SCRIPTS = True`
-        - Opcionalmente `FORZAR_REEJECUCION = True` para regenerar los datos.
-     3. Ejecutar la celda que llama a los scripts `RM_clean_data.py` y `ETL.py` ubicados en
-        `data/raw/Carga de datos/`.
-     4. Verificar en las celdas siguientes que:
-        - Se encuentra el archivo `geodatabase_proyecto.gpkg`.
-        - Se listan las capas disponibles (por ejemplo `comunas_rm_censo`, etc.).
+Si quieres ver logs en vivo:
+```bash
+docker compose up otp_build
+```
 
-4. Relación con QGIS y Streamlit
-   - Una vez ejecutado `01_data_acquisition.ipynb`, el archivo
-     `data/raw/Carga de datos/geodatabase_proyecto.gpkg` queda listo para:
-     - Ser usado por la app de Streamlit.
-     - Ser cargado en QGIS siguiendo los pasos de la sección anterior.
+(ese contenedor termina solo al finalizar el build)
+
+### 4.3 Servir OTP
+Una vez construido el grafo:
+```bash
+docker compose up -d otp
+```
+
+Verifica que responde en el host:
+
+- http://localhost:8080
+
+Logs:
+```bash
+docker logs -f otp_pep
+```
+
+### 4.4 URL de OTP dentro de Docker vs host
+- Desde tu navegador (host): http://localhost:8080
+- Desde Jupyter/Streamlit dentro de contenedor: http://otp:8080
+
+El docker-compose.yml ya define en Jupyter:
+
+- OTP_URL=http://otp:8080
+
+## 5) Acceso a las herramientas
+Streamlit
+- http://localhost:8501
+
+Logs:
+```bash
+docker logs -f streamlit_pep
+```
+
+JupyterLab
+
+- http://localhost:8888
+- Token: el de tu .env (ej. pep1)
+
+Logs:
+```bash
+docker logs -f jupyter_pep
+```
+
+pgAdmin (opcional)
+
+- http://localhost:5050
+
+## 6) Flujo recomendado de notebooks
+00_template.py
+
+- define rutas base y crea carpetas de data/ y outputs/
+
+Notebook 01 – Adquisición
+
+- construye/verifica el GeoPackage:
+
+- data/raw/Carga de datos/geodatabase_proyecto.gpkg
+
+Notebook 03 – Accesibilidad (OTP)
+
+- usa OTP para tiempos de viaje
+
+- outputs esperados en outputs/:
+
+- outputs/acc_long_partial.csv
+
+- outputs/comunas_accessibility_otp.parquet
+
+Notebook 04 – Machine Learning
+
+- PCA + clustering
+
+- usar cod_comuna como llave (normalizar CUT_COM -> cod_comuna)
+
+Notebook 05 – Results synthesis
+
+- recalcula “desiertos” y métricas desde el parquet y clusters
+
+## 7) Troubleshooting rápido
+Ver contenedores
+```bash
+docker ps
+```
+
+Reiniciar servicios
+```bash
+docker compose restart otp
+docker compose restart jupyter
+docker compose restart web
+```
+
+OTP da timeout
+
+- aumentar timeout del request en el cliente
+
+- reintentos con backoff + cache
+
+- revisar logs:
+
+```bash
+docker logs -f otp_pep
+```
+
+Puerto ocupado (ej: 5432)
+
+- cambia POSTGRES_PORT en .env o libera el puerto local
 
