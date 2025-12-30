@@ -28,13 +28,13 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - OTP_URL=http://otp:8080
+      - OTP_URL=http://otp:8080/routers/default/plan
     volumes:
       - ./notebooks:/home/jovyan/work
       - ./data:/home/jovyan/data
       - ./scripts:/home/jovyan/scripts
       - ./outputs:/home/jovyan/outputs
-      - ./app:/home/jovyan/app           # aquí montamos tu app
+      - ./app:/home/jovyan/app
     ports:
       - "${JUPYTER_PORT}:8888"
     depends_on:
@@ -56,18 +56,8 @@ services:
       - postgis
     restart: unless-stopped
 
-  otp_build:
-    image: opentripplanner/opentripplanner:latest
-    container_name: otp_build_pep
-    volumes:
-      - ./data/otp:/var/opentripplanner
-    environment:
-      - JAVA_TOOL_OPTIONS=-Xmx4G
-    command: ["--build", "--save"]
-    restart: "no"
-
   otp:
-    image: opentripplanner/opentripplanner:latest
+    image: opentripplanner/opentripplanner:2.4.0
     container_name: otp_pep
     ports:
       - "8080:8080"
@@ -75,8 +65,16 @@ services:
       - ./data/otp:/var/opentripplanner
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx4G
-    command: ["--load", "--serve"]
     restart: unless-stopped
+    # -----------------------------------------------------------
+    # TRUCO: Sobrescribimos el entrypoint para usar Java directo
+    # igual que en tu script manual que sí funcionó.
+    # -----------------------------------------------------------
+    entrypoint: java
+    command: >
+      -cp "/app/resources:/app/classes:/app/libs/*"
+      org.opentripplanner.standalone.OTPMain
+      --load --serve /var/opentripplanner
 
   web:
     build: ./docker/jupyter               # reutilizamos la misma imagen
