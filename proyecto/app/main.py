@@ -9,6 +9,7 @@ import pandas as pd
 from folium import plugins
 from streamlit_folium import st_folium
 import streamlit as st
+import calculator_backend as calc
 
 
 # ----------------------------------------------------------------------
@@ -115,6 +116,7 @@ seccion = st.sidebar.radio(
         "Accesibilidad",
         "Desiertos de servicio",
         "Mapa Interactivo de Puntos",
+        "Calculadora Calidad de Vida",
     ],
 )
 
@@ -527,3 +529,158 @@ elif seccion == "Mapa Interactivo de Puntos":
 
     # Mostrar mapa en Streamlit
     st_folium(m, width=700, height=500)
+
+
+# ----------------------------------------------------------------------
+# Sección 6: Calculadora Calidad de Vida
+# ----------------------------------------------------------------------
+elif seccion == "Calculadora Calidad de Vida":
+    st.title("🧮 Calculadora de Calidad de Vida")
+    st.markdown("""
+    Esta herramienta calcula un índice de calidad de vida (0-100) para una ubicación específica en la Región Metropolitana,
+    personalizado según el perfil del usuario (Estudiante, Adulto Mayor, Familia Joven).
+    """)
+
+    # Inicializar estado para coordenadas si no existe
+    if "lat_calc" not in st.session_state:
+        st.session_state.lat_calc = -33.4372
+    if "lon_calc" not in st.session_state:
+        st.session_state.lon_calc = -70.6506
+
+    # 1. Cargar datos unificados
+    with st.spinner("Cargando motor de cálculo y base de datos de servicios..."):
+        gdf_servicios = calc.cargar_servicios_unificados(RUTA_GPKG)
+        if gdf_servicios.empty:
+            st.error("No se pudieron cargar los servicios. Verifique geodatabase_proyecto.gpkg")
+            st.stop()
+
+    col_config, col_map = st.columns([1, 2])
+
+    with col_config:
+        st.subheader("1. Configuración")
+        
+        # Selector de Perfil
+        perfil_sel = st.selectbox(
+            "Seleccione Perfil", 
+            list(calc.PERFILES_USUARIO.keys()),
+            format_func=lambda x: x.replace("_", " ").title()
+        )
+        desc = calc.PERFILES_USUARIO[perfil_sel]["desc"]
+        st.info(f"💡 **Enfoque**: {desc}")
+
+    with col_map:
+        st.subheader("Mapa de Selección")
+        # Usamos las coordenadas del estado para centrar
+        # Nota: lat_val/lon_val aún no existen como variables locales de input, usamos session_state directo
+        curr_lat = st.session_state.lat_calc
+        curr_lon = st.session_state.lon_calc
+        
+        # Crear mapa centrado en la selección actual
+        m = folium.Map(location=[curr_lat, curr_lon], zoom_start=14)
+        
+        # Marcador en la posición actual
+        folium.Marker(
+            [curr_lat, curr_lon], 
+            popup="Ubicación Objetivo",
+            icon=folium.Icon(color="red", icon="star")
+        ).add_to(m)
+        
+        # Círculo de radio 1000m (para referencia visual)
+        folium.Circle(
+            location=[curr_lat, curr_lon],
+            radius=1000,
+            color="blue",
+            fill=True,
+            fill_opacity=0.1
+        ).add_to(m)
+
+        # Capturar clics
+        # Usamos una key dinámica para forzar al mapa a redibujarse cuando cambian las coordenadas
+        # Esto asegura que el marcador y el centro se actualicen visualmente.
+        map_key = f"mapa_calc_{curr_lat}_{curr_lon}"
+        map_data = st_folium(m, width="100%", height=500, key=map_key)
+
+        # Lógica de actualización por clic
+        if map_data and map_data.get("last_clicked"):
+            click_lat = map_data["last_clicked"]["lat"]
+            click_lng = map_data["last_clicked"]["lng"]
+            
+            # Si cambia respecto a lo guardado, actualizamos y recargamos
+            if abs(click_lat - st.session_state.lat_calc) > 0.0001 or abs(click_lng - st.session_state.lon_calc) > 0.0001:
+                st.session_state.lat_calc = click_lat
+                st.session_state.lon_calc = click_lng
+                # Actualizar también los inputs directamente (ahora es seguro porque inputs no se han creado aún)
+                st.session_state.input_lat = click_lat
+                st.session_state.input_lon = click_lng
+                st.rerun()
+
+    with col_config:
+        st.divider()
+
+        st.subheader("2. Ubicación")
+        st.markdown("Haga clic en el mapa o ajuste las coordenadas:")
+        
+        # Callback para cuando el usuario edita manual
+        def update_coords():
+            st.session_state.lat_calc = st.session_state.input_lat
+            st.session_state.lon_calc = st.session_state.input_lon
+
+        lat_val = st.number_input("Latitud", value=st.session_state.lat_calc, format="%.5f", key="input_lat", on_change=update_coords)
+        lon_val = st.number_input("Longitud", value=st.session_state.lon_calc, format="%.5f", key="input_lon", on_change=update_coords)
+        
+        # Botón Calcular
+        st.divider()
+        btn_calcular = st.button("🚀 Calcular Índice", type="primary", use_container_width=True)
+
+
+
+    # RESULTADOS
+    if btn_calcular:
+        st.markdown("---")
+        res = calc.calcular_indice_calidad_vida(gdf_servicios, lat_val, lon_val, perfil_sel)
+        
+        if "error" in res:
+            st.error(res["error"])
+        else:
+            score = res["indice"]
+            detalles = res["detalles"]
+            
+            # Header de resultados
+            c_score, c_msg = st.columns([1, 3])
+            with c_score:
+                st.metric("Índice Calidad de Vida", f"{score}/100")
+            with c_msg:
+                if score >= 80:
+                    st.success("🌟 **Excelente ubicación** para este perfil.")
+                elif score >= 50:
+                    st.warning("⚠️ **Ubicación regular**, tiene carencias.")
+                else:
+                    st.error("🛑 **Zona deficiente** para las necesidades de este perfil.")
+            
+            st.subheader("📊 Desglose del Puntaje")
+            
+            if detalles:
+                # Preparamos datos para visualización
+                rows = []
+                for srv, val in detalles.items():
+                    rows.append({
+                        "Servicio": srv,
+                        "Conteo": val["conteo"],
+                        "Importancia (1-5)": val["importancia"],
+                        "Aporte Puntos": val["aporte_final"],
+                        "Score Norm": val["score_norm"]
+                    })
+                df_res = pd.DataFrame(rows).sort_values("Aporte Puntos", ascending=False)
+                
+                tab_tabla, tab_grafico = st.tabs(["Tabla Detallada", "Gráfico de Aporte"])
+                
+                with tab_tabla:
+                    st.dataframe(
+                        df_res.style.background_gradient(subset=["Aporte Puntos"], cmap="Greens"),
+                        use_container_width=True
+                    )
+                
+                with tab_grafico:
+                    st.bar_chart(df_res.set_index("Servicio")["Aporte Puntos"])
+            else:
+                st.info("No se encontraron servicios que aporten puntaje en este radio de 1000m.")
