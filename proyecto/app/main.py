@@ -177,9 +177,9 @@ with st.sidebar:
         menu_title=None,  # Sin título adicional
         options=[
             "Introducción y datos",
-            "Oferta de servicios",
+            "Oferta de Servicios",
             "Accesibilidad",
-            "Desiertos de servicio",
+            "Desiertos de Servicio",
             "Mapa Interactivo de Puntos",
             "Calculadora Calidad de Vida",
         ],
@@ -302,10 +302,10 @@ if seccion == "Introducción y datos":
 
 
 # ----------------------------------------------------------------------
-# Sección 2: Oferta de servicios
+# Sección 2: Oferta de Servicios
 # ----------------------------------------------------------------------
-elif seccion == "Oferta de servicios":
-    st.title("Oferta de servicios por comuna")
+elif seccion == "Oferta de Servicios":
+    st.title("Oferta de Servicios por Comuna")
 
     indicadores = cargar_indicadores()
     comunas = cargar_geodataframe(LAYER_COMUNAS)
@@ -329,7 +329,7 @@ elif seccion == "Oferta de servicios":
     }
 
     nombre_servicio = st.selectbox(
-        "Seleccionar servicio",
+        "Seleccionar Servicio",
         list(servicios_disponibles.keys()),
     )
     col_tasa = servicios_disponibles[nombre_servicio]
@@ -337,7 +337,7 @@ elif seccion == "Oferta de servicios":
     if col_tasa not in indicadores.columns:
         st.error(f"No se encontró la columna {col_tasa} en indicadores_servicios.csv.")
     else:
-        st.subheader("Tabla resumen")
+        st.subheader("Tabla Resumen")
 
         df_tabla = indicadores[["comuna", "poblacion", col_tasa]].copy()
         df_tabla = df_tabla.rename(
@@ -359,7 +359,7 @@ elif seccion == "Oferta de servicios":
             st.markdown("**Comunas con mayor tasa por 10.000 habitantes**")
             st.dataframe(df_tabla_ord.tail(10), use_container_width=True)
 
-        st.subheader("Mapa coroplético de oferta relativa")
+        st.subheader("Mapa Coroplético de Oferta Relativa")
 
         comunas_ind = comunas.merge(
             indicadores[["cod_comuna", col_tasa]],
@@ -386,7 +386,7 @@ elif seccion == "Oferta de servicios":
 # Sección 3: Accesibilidad
 # ----------------------------------------------------------------------
 elif seccion == "Accesibilidad":
-    st.title("Accesibilidad a servicios")
+    st.title("Accesibilidad a Servicios")
 
     accesibilidad = cargar_accesibilidad()
     comunas = cargar_geodataframe(LAYER_COMUNAS)
@@ -427,7 +427,7 @@ elif seccion == "Accesibilidad":
         "Ferias Libres": "ferias_libres",
     }
     
-    servicio_sel = st.selectbox("Seleccionar servicio", list(opciones.keys()))
+    servicio_sel = st.selectbox("Seleccionar Servicio", list(opciones.keys()))
     metric_col = opciones[servicio_sel]
 
     if metric_col not in accesibilidad.columns:
@@ -486,10 +486,10 @@ elif seccion == "Accesibilidad":
 
 
 # ----------------------------------------------------------------------
-# Sección 4: Desiertos de servicio
+# Sección 4: Desiertos de Servicio
 # ----------------------------------------------------------------------
-elif seccion == "Desiertos de servicio":
-    st.title("Desiertos de servicio")
+elif seccion == "Desiertos de Servicio":
+    st.title("Desiertos de Servicio")
 
     desiertos = cargar_desiertos()
     comunas = cargar_geodataframe(LAYER_COMUNAS)
