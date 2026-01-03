@@ -57,32 +57,58 @@ def cargar_indicadores() -> pd.DataFrame:
 def cargar_accesibilidad() -> pd.DataFrame:
     # Usamos desiertos_servicios.csv como fuente principal de accesibilidad 
     # ya que es la tabla maestra procesada con todos los datos finales.
-    path = DESIERTOS_PATH
-    if not path.exists():
-        return pd.DataFrame()
-    
-    mtime = path.stat().st_mtime
-    return _load_csv_content(path, mtime)
+    return cargar_desiertos()
 
-# Función worker (CON caché: solo recarga si mtime cambia)
-@st.cache_data
-def _load_csv_content(path, _mtime):
-    return pd.read_csv(path)
+
 
 
 # Función wrapper (SIN caché)
 def cargar_desiertos() -> pd.DataFrame:
-    path = DESIERTOS_PATH
-    if not path.exists():
+    """
+    Acceso público a datos de desiertos con validación de mtime para consistencia.
+    """
+    if not DESIERTOS_PATH.exists():
         return pd.DataFrame()
         
-    mtime = path.stat().st_mtime
-    return _load_desiertos_content(path, mtime)
+    mtime = DESIERTOS_PATH.stat().st_mtime
+    
+    # Manejamos el archivo de indicadores como dependencia opcional para el caché
+    meta_mtime = None
+    if INDICADORES_PATH.exists():
+        meta_mtime = INDICADORES_PATH.stat().st_mtime
+        
+    return _load_desiertos_content(DESIERTOS_PATH, mtime, INDICADORES_PATH, meta_mtime)
 
 # Función worker (CON caché)
 @st.cache_data
-def _load_desiertos_content(path, _mtime):
-    return pd.read_csv(path)
+def _load_desiertos_content(path: Path, _mtime: float, meta_path: Path = None, _meta_mtime: float = None) -> pd.DataFrame:
+    """
+    Carga el CSV de desiertos y lo enriquece de forma segura con población.
+    La firma de la función incluye _meta_mtime para que Streamlit invalide
+    el caché si el archivo de indicadores cambia.
+    """
+    try:
+        df = pd.read_csv(path)
+    except Exception as e:
+        st.error(f"Error al leer el archivo de desiertos en {path.name}: {e}")
+        return pd.DataFrame()
+
+    # Enriquecimiento reactivo: solo si falta la columna 'poblacion'
+    if "poblacion" not in df.columns and meta_path and meta_path.exists():
+        try:
+            indicadores = pd.read_csv(meta_path)
+            # Validación de contrato: cod_comuna para el join y poblacion para el dato
+            if {"cod_comuna", "poblacion"}.issubset(indicadores.columns):
+                df = df.merge(
+                    indicadores[["cod_comuna", "poblacion"]],
+                    on="cod_comuna",
+                    how="left"
+                )
+        except Exception as e:
+            # Fallback silencioso en UI pero logueado en consola
+            print(f"Aviso: No se pudo enriquecer con población desde {meta_path.name}: {e}")
+            
+    return df
 
 
 @st.cache_data
@@ -550,9 +576,12 @@ elif seccion == "Desiertos de servicio":
                 "1 indica que la comuna se clasifica como desierto para ese servicio, 0 indica que no."
             )
             
-            desiertos_detalle = desiertos[
-                ["cod_comuna", "comuna", "poblacion", "n_servicios_en_desierto"] + banderas
-            ].sort_values("n_servicios_en_desierto", ascending=False)
+            cols_detalle = ["cod_comuna", "comuna", "poblacion", "n_servicios_en_desierto"]
+            cols_detalle = [c for c in cols_detalle if c in desiertos.columns] + banderas
+
+            desiertos_detalle = desiertos[cols_detalle].sort_values(
+                "n_servicios_en_desierto", ascending=False
+            )
             
             # Renombrar columnas base
             rename_dict = {
