@@ -10,6 +10,7 @@ from folium import plugins
 from streamlit_folium import st_folium
 import streamlit as st
 import calculator_backend as calc
+from streamlit_option_menu import option_menu
 
 
 # ----------------------------------------------------------------------
@@ -52,18 +53,36 @@ def cargar_indicadores() -> pd.DataFrame:
     return pd.DataFrame()
 
 
-@st.cache_data
+# Función wrapper (SIN caché para que chequee siempre el mtime)
 def cargar_accesibilidad() -> pd.DataFrame:
-    if ACCESIBILIDAD_PATH.exists():
-        return pd.read_csv(ACCESIBILIDAD_PATH)
-    return pd.DataFrame()
+    # Usamos desiertos_servicios.csv como fuente principal de accesibilidad 
+    # ya que es la tabla maestra procesada con todos los datos finales.
+    path = DESIERTOS_PATH
+    if not path.exists():
+        return pd.DataFrame()
+    
+    mtime = path.stat().st_mtime
+    return _load_csv_content(path, mtime)
 
-
+# Función worker (CON caché: solo recarga si mtime cambia)
 @st.cache_data
+def _load_csv_content(path, _mtime):
+    return pd.read_csv(path)
+
+
+# Función wrapper (SIN caché)
 def cargar_desiertos() -> pd.DataFrame:
-    if DESIERTOS_PATH.exists():
-        return pd.read_csv(DESIERTOS_PATH)
-    return pd.DataFrame()
+    path = DESIERTOS_PATH
+    if not path.exists():
+        return pd.DataFrame()
+        
+    mtime = path.stat().st_mtime
+    return _load_desiertos_content(path, mtime)
+
+# Función worker (CON caché)
+@st.cache_data
+def _load_desiertos_content(path, _mtime):
+    return pd.read_csv(path)
 
 
 @st.cache_data
@@ -95,6 +114,23 @@ def cargar_capas_puntos() -> dict[str, gpd.GeoDataFrame]:
     return capas
 
 
+# Wrapper (SIN caché)
+def cargar_html_template(template_name: str) -> str:
+    """
+    Carga un template HTML desde el directorio views.
+    Usa caché pero se invalida automáticamente si el archivo cambia.
+    """
+    template_path = Path(__file__).parent / "views" / template_name
+    mtime = template_path.stat().st_mtime
+    return _load_template_content(template_path, mtime)
+
+# Worker (CON caché)
+@st.cache_data
+def _load_template_content(path: Path, _mtime: float) -> str:
+    """Helper function que realmente lee el archivo."""
+    return path.read_text(encoding="utf-8")
+
+
 # ----------------------------------------------------------------------
 # Configuración general de la página
 # ----------------------------------------------------------------------
@@ -105,20 +141,62 @@ st.set_page_config(
 
 
 # ----------------------------------------------------------------------
-# Sidebar: navegación
+# Sidebar: navegación con option_menu
 # ----------------------------------------------------------------------
-st.sidebar.title("PEP1 – Desiertos de servicios")
-seccion = st.sidebar.radio(
-    "Secciones",
-    [
-        "Introducción y datos",
-        "Oferta de servicios",
-        "Accesibilidad",
-        "Desiertos de servicio",
-        "Mapa Interactivo de Puntos",
-        "Calculadora Calidad de Vida",
-    ],
-)
+with st.sidebar:
+    # Cargar título desde template HTML (con caché)
+    st.markdown(cargar_html_template("sidebar_header.html"), unsafe_allow_html=True)
+
+    seccion = option_menu(
+        menu_title=None,  # Sin título adicional
+        options=[
+            "Introducción y datos",
+            "Oferta de servicios",
+            "Accesibilidad",
+            "Desiertos de servicio",
+            "Mapa Interactivo de Puntos",
+            "Calculadora Calidad de Vida",
+        ],
+        icons=[
+            "house-door",
+            "bar-chart",
+            "geo-alt",
+            "exclamation-triangle",
+            "map",
+            "calculator",
+        ],
+        menu_icon="cast",
+        default_index=0,
+        styles={
+            "container": {
+                "padding": "0!important",
+                "background-color": "transparent",
+            },
+            "icon": {
+                "color": "#b6bac2", 
+                "font-size": "18px",
+            },
+            "nav-link": {
+                "font-size": "15px",
+                "text-align": "left",
+                "margin": "2px 0px",
+                "padding": "12px 16px",
+                "border-radius": "8px",
+                "color": "#4a5568",  # Texto más claro pero legible
+                "--hover-color": "#e8f4f8",  # Azul muy claro al hover
+                "transition": "all 0.3s ease",
+            },
+            "nav-link-selected": {
+                "background-color": "#3b82f6",  # Azul más brillante y moderno
+                "color": "white",
+                "font-weight": "500",
+                "box-shadow": "0 2px 8px rgba(59,130,246,0.3)",
+            },
+            "icon-selected": {
+                "color": "white",  # Iconos blancos cuando está seleccionado
+            },
+        },
+    )
 
 
 # ----------------------------------------------------------------------
@@ -175,7 +253,14 @@ if seccion == "Introducción y datos":
     with col2:
         st.markdown("**Capas disponibles en geodatabase_proyecto.gpkg**")
         if not catalogo.empty:
-            st.dataframe(catalogo)
+            # Renombrar columnas para mejor visualización
+            catalogo_display = catalogo.rename(columns={
+                "capa": "Capa",
+                "n_registros": "N° Registros",
+                "tipo_geometria": "Tipo Geometría",
+                "crs": "Sistema de Coordenadas"
+            })
+            st.dataframe(catalogo_display, use_container_width=True)
         else:
             st.info("No se encontró el catálogo de capas. Revise notebooks 00–01.")
 
@@ -231,21 +316,22 @@ elif seccion == "Oferta de servicios":
         df_tabla = indicadores[["comuna", "poblacion", col_tasa]].copy()
         df_tabla = df_tabla.rename(
             columns={
-                "poblacion": "población",
-                col_tasa: "tasa_x10k",
+                "comuna": "Comuna",
+                "poblacion": "Población",
+                col_tasa: "Tasa x 10k hab.",
             }
         )
-        df_tabla_ord = df_tabla.sort_values("tasa_x10k")
+        df_tabla_ord = df_tabla.sort_values("Tasa x 10k hab.")
 
         col1, col2 = st.columns(2)
 
         with col1:
             st.markdown("**Comunas con menor tasa por 10.000 habitantes**")
-            st.dataframe(df_tabla_ord.head(10))
+            st.dataframe(df_tabla_ord.head(10), use_container_width=True)
 
         with col2:
             st.markdown("**Comunas con mayor tasa por 10.000 habitantes**")
-            st.dataframe(df_tabla_ord.tail(10))
+            st.dataframe(df_tabla_ord.tail(10), use_container_width=True)
 
         st.subheader("Mapa coroplético de oferta relativa")
 
@@ -290,59 +376,69 @@ elif seccion == "Accesibilidad":
 
     st.markdown(
         """
-        Se utilizan dos tipos de métricas de accesibilidad por comuna:
+        Se utiliza el motor **OpenTripPlanner (OTP)** para calcular la accesibilidad real 
+        utilizando la red de transporte público y caminata:
         
-        - **Distancia mínima** desde el centroide comunal al servicio más cercano (km).
-        - **Cobertura territorial**: porcentaje de superficie comunal dentro de un radio definido alrededor de los servicios.
+        - **Tiempo de viaje**: Minutos necesarios para llegar desde el centroide comunal al servicio más cercano.
+        - **Modos**: Combinación de Caminata + Bus/Metro (GTFS).
         """
     )
 
-    # Definición de columnas esperadas
+    # Definición de las categorías disponibles basadas en los datos reales de desiertos_servicios.csv
     opciones = {
-        "Salud": {
-            "dist_col": "dist_min_salud_km",
-            "cov_col": "porc_cubierto_salud",
-        },
-        "Supermercados": {
-            "dist_col": "dist_min_supermercados_km",
-            "cov_col": "porc_cubierto_supermercados",
-        },
+        "Salud": "salud",
+        "Educación Escolar": "educacion_escolar",
+        "Educación Superior": "educacion_superior",
+        "Supermercados": "supermercados",
+        "Almacenes de Barrio": "almacenes_barrio",
+        "Áreas Verdes": "areas_verdes",
+        "Bancos": "bancos",
+        "Bomberos": "bomberos",
+        "Carabineros": "carabineros",
+        "Paradas de Micro": "micro",
+        "Metro y Tren": "metro_tren",
+        "Infraestructura Deportiva": "deporte_infra",
+        "Ferias Libres": "ferias_libres",
     }
-
+    
     servicio_sel = st.selectbox("Seleccionar servicio", list(opciones.keys()))
-    cols = opciones[servicio_sel]
+    metric_col = opciones[servicio_sel]
 
-    dist_col = cols["dist_col"]
-    cov_col = cols["cov_col"]
-
-    if dist_col not in accesibilidad.columns or cov_col not in accesibilidad.columns:
+    if metric_col not in accesibilidad.columns:
         st.error(
-            f"Faltan columnas de accesibilidad para {servicio_sel}. "
-            f"Revise notebooks 03 y archivos en data/processed."
+            f"Faltan datos de accesibilidad para {servicio_sel} ({metric_col}). "
+            f"Asegúrese de haber ejecutado todos los pasos del Notebook 04."
         )
     else:
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("**Comunas más alejadas del servicio (distancia mínima)**")
-            df_dist = accesibilidad[["comuna", dist_col]].sort_values(
-                dist_col, ascending=False
+            st.markdown(f"**Comunas con mayor tiempo de viaje a {servicio_sel}**")
+            # Filtrar nulos si existen para el ranking
+            df_dist = accesibilidad[["comuna", metric_col]].dropna().sort_values(
+                metric_col, ascending=False
             )
-            df_dist = df_dist.rename(columns={dist_col: "distancia_km"})
-            st.dataframe(df_dist.head(10))
+            df_dist = df_dist.rename(columns={
+                "comuna": "Comuna",
+                metric_col: "Tiempo (min)"
+            })
+            st.dataframe(df_dist.head(10), use_container_width=True)
 
         with col2:
-            st.markdown("**Comunas con menor cobertura territorial del servicio**")
-            df_cov = accesibilidad[["comuna", cov_col]].sort_values(
-                cov_col, ascending=True
+            st.markdown(f"**Comunas con mejor acceso a {servicio_sel}**")
+            df_cov = accesibilidad[["comuna", metric_col]].dropna().sort_values(
+                metric_col, ascending=True
             )
-            df_cov = df_cov.rename(columns={cov_col: "porcentaje_cubierto"})
-            st.dataframe(df_cov.head(10))
+            df_cov = df_cov.rename(columns={
+                "comuna": "Comuna",
+                metric_col: "Tiempo (min)"
+            })
+            st.dataframe(df_cov.head(10), use_container_width=True)
 
-        st.subheader("Mapa: distancia mínima al servicio")
+        st.subheader(f"Mapa: Tiempo de viaje a {servicio_sel} (OTP)")
 
         comunas_dist = comunas.merge(
-            accesibilidad[["cod_comuna", dist_col]],
+            accesibilidad[["cod_comuna", metric_col]],
             left_on="CUT_COM",
             right_on="cod_comuna",
             how="left",
@@ -350,40 +446,16 @@ elif seccion == "Accesibilidad":
 
         fig, ax = plt.subplots(figsize=(7, 7))
         comunas_dist.plot(
-            column=dist_col,
+            column=metric_col,
             ax=ax,
             legend=True,
             cmap="OrRd",
             edgecolor="black",
             linewidth=0.3,
+            missing_kwds={"color": "lightgrey", "label": "Sin datos"}
         )
         ax.set_axis_off()
-        ax.set_title(f"Distancia mínima a {servicio_sel.lower()} (km)", fontsize=12)
-        st.pyplot(fig)
-
-        st.subheader("Mapa: porcentaje de superficie comunal cubierta")
-
-        comunas_cov = comunas.merge(
-            accesibilidad[["cod_comuna", cov_col]],
-            left_on="CUT_COM",
-            right_on="cod_comuna",
-            how="left",
-        )
-
-        fig, ax = plt.subplots(figsize=(7, 7))
-        comunas_cov.plot(
-            column=cov_col,
-            ax=ax,
-            legend=True,
-            cmap="Greens",
-            edgecolor="black",
-            linewidth=0.3,
-        )
-        ax.set_axis_off()
-        ax.set_title(
-            f"Porcentaje de superficie comunal cubierta por {servicio_sel.lower()}",
-            fontsize=12,
-        )
+        ax.set_title(f"Tiempo de viaje a {servicio_sel} (minutos)", fontsize=12)
         st.pyplot(fig)
 
 
@@ -435,7 +507,15 @@ elif seccion == "Desiertos de servicio":
         ranking = desiertos[cols_rank].sort_values(
             "n_servicios_en_desierto", ascending=False
         )
-        st.dataframe(ranking.head(15))
+        
+        # Renombrar columnas para mejor visualización
+        ranking_display = ranking.rename(columns={
+            "cod_comuna": "Código Comuna",
+            "comuna": "Comuna",
+            "poblacion": "Población",
+            "n_servicios_en_desierto": "N° Servicios en Desierto"
+        })
+        st.dataframe(ranking_display.head(15), use_container_width=True)
 
         st.subheader("Mapa índice de desiertos")
 
@@ -469,12 +549,26 @@ elif seccion == "Desiertos de servicio":
             st.markdown(
                 "1 indica que la comuna se clasifica como desierto para ese servicio, 0 indica que no."
             )
-            st.dataframe(
-                desiertos[
-                    ["cod_comuna", "comuna", "poblacion", "n_servicios_en_desierto"]
-                    + banderas
-                ].sort_values("n_servicios_en_desierto", ascending=False)
-            )
+            
+            desiertos_detalle = desiertos[
+                ["cod_comuna", "comuna", "poblacion", "n_servicios_en_desierto"] + banderas
+            ].sort_values("n_servicios_en_desierto", ascending=False)
+            
+            # Renombrar columnas base
+            rename_dict = {
+                "cod_comuna": "Código Comuna",
+                "comuna": "Comuna",
+                "poblacion": "Población",
+                "n_servicios_en_desierto": "N° Servicios en Desierto"
+            }
+            
+            # Renombrar banderas (es_desierto_xxx -> Desierto: Xxx)
+            for col in banderas:
+                servicio_name = col.replace("es_desierto_", "").replace("_", " ").title()
+                rename_dict[col] = f"Desierto: {servicio_name}"
+            
+            desiertos_display = desiertos_detalle.rename(columns=rename_dict)
+            st.dataframe(desiertos_display, use_container_width=True)
 
 
 # ----------------------------------------------------------------------
