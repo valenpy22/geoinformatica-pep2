@@ -57,36 +57,52 @@ SCORING_CONFIG = {
 PERFILES_USUARIO = {
     "estudiante": {
         "pesos": {
-            "educacion_superior": 5, "paradas_metro_tren": 5, "paradas_micro": 4,
-            "bancos": 3, "malls": 3, "infraestructura_deportiva": 3,
-            "areas_verdes": 2, "bencineras": 1
+            "educacion_superior": 5,
+            "paradas_metro_tren": 5,
+            "paradas_micro": 4,
+            "bancos": 3,
+            "malls": 3,
+            "infraestructura_deportiva": 3,
+            "areas_verdes": 2,
+            "bencineras": 1,
         },
-        "desc": "Prioriza conectividad y educación superior"
+        "desc": "Prioriza conectividad y educación superior",
     },
     "adulto_mayor": {
         "pesos": {
-            "salud": 5, "farmacias": 5, "paradas_micro": 4,
-            "areas_verdes": 4, "cuarteles_carabineros": 3,
-            "bancos": 3, "ferias_libres": 3,
-            "educacion_escolar": 1, "educacion_superior": 1, "infraestructura_deportiva": 1
+            "salud": 5,
+            "farmacias": 5,
+            "paradas_micro": 4,
+            "areas_verdes": 4,
+            "cuarteles_carabineros": 3,
+            "bancos": 3,
+            "ferias_libres": 3,
+            "educacion_escolar": 1,
+            "educacion_superior": 1,
+            "infraestructura_deportiva": 1,
         },
-        "desc": "Prioriza salud, tranquilidad y abasto local"
+        "desc": "Prioriza salud, tranquilidad y abasto local",
     },
     "familia_joven": {
         "pesos": {
-            "educacion_escolar": 5, "areas_verdes": 5, "salud": 4,
-            "supermercados": 4, "cuarteles_carabineros": 4,
-            "bencineras": 3, "malls": 3,
-            "educacion_superior": 1
+            "educacion_escolar": 5,
+            "areas_verdes": 5,
+            "salud": 4,
+            "supermercados": 4,
+            "cuarteles_carabineros": 4,
+            "bencineras": 3,
+            "malls": 3,
+            "educacion_superior": 1,
         },
-        "desc": "Prioriza colegios, parques y seguridad"
-    }
+        "desc": "Prioriza colegios, parques y seguridad",
+    },
 }
 
 
 # ============================================================================
 # FUNCIONES DE CARGA Y LOGICA
 # ============================================================================
+
 
 @st.cache_data
 def cargar_servicios_unificados(gpkg_path):
@@ -95,32 +111,32 @@ def cargar_servicios_unificados(gpkg_path):
     Usa caché de Streamlit para no recargar en cada interacción.
     """
     lista_gdfs = []
-    
+
     # Iteramos sobre las capas definidas
     for category, layer_name in SERVICE_LAYERS.items():
         try:
             # Cargamos la capa individual
             gdf = gpd.read_file(gpkg_path, layer=layer_name)
-            
+
             # Mantenemos solo geometry y agregamos categoría
             if not gdf.empty:
-                gdf = gdf[['geometry']].copy()
-                gdf['tipo_servicio'] = category
+                gdf = gdf[["geometry"]].copy()
+                gdf["tipo_servicio"] = category
                 lista_gdfs.append(gdf)
         except Exception as e:
             # Podríamos loguear el error, pero continuamos con lo que haya
             pass
-    
+
     if not lista_gdfs:
-        return gpd.GeoDataFrame(columns=['geometry', 'tipo_servicio'], crs="EPSG:32719")
+        return gpd.GeoDataFrame(columns=["geometry", "tipo_servicio"], crs="EPSG:32719")
 
     # Unimos todo
     gdf_total = pd.concat(lista_gdfs, ignore_index=True)
-    
+
     # Aseguramos CRS métrico (EPSG:32719 para Santiago/Chile)
     if gdf_total.crs is None or gdf_total.crs.to_string() != "EPSG:32719":
         gdf_total = gdf_total.to_crs(epsg=32719)
-        
+
     return gdf_total
 
 
@@ -130,25 +146,24 @@ def obtener_servicios_en_radio(gdf_servicios, lat, lon, radio_metros=1000):
     """
     # 1. Crear punto usuario (WGS84 -> EPSG:32719)
     punto_usuario = gpd.GeoDataFrame(
-        geometry=[Point(lon, lat)], 
-        crs="EPSG:4326"
+        geometry=[Point(lon, lat)], crs="EPSG:4326"
     ).to_crs(gdf_servicios.crs)
-    
+
     # 2. Crear buffer
     circulo = punto_usuario.buffer(radio_metros).iloc[0]
-    
+
     # 3. Filtrar espacialmente (usando índice espacial si es posible, pero intersects directo es ok para este tamaño)
     # Optimización: primero filtrar por bounding box si fuera muy grande, pero aquí intersects está bien
     servicios_cercanos = gdf_servicios[gdf_servicios.intersects(circulo)]
-    
+
     # 4. Contar
-    conteo = servicios_cercanos['tipo_servicio'].value_counts().to_dict()
-    
+    conteo = servicios_cercanos["tipo_servicio"].value_counts().to_dict()
+
     # Rellenar ceros
     for servicio in SERVICE_LAYERS.keys():
         if servicio not in conteo:
             conteo[servicio] = 0
-            
+
     return conteo
 
 
@@ -159,7 +174,7 @@ def normalizar_conteo(servicio_key, conteo_real):
     meta = 1
     if servicio_key in SCORING_CONFIG:
         meta = SCORING_CONFIG[servicio_key]["meta"]
-        
+
     score = min(conteo_real / meta, 1.0)
     return score
 
@@ -170,42 +185,45 @@ def calcular_indice_calidad_vida(gdf_servicios, lat, lon, perfil_key):
     """
     if perfil_key not in PERFILES_USUARIO:
         return {"error": f"Perfil '{perfil_key}' no encontrado."}
-    
+
     pesos_perfil = PERFILES_USUARIO[perfil_key]["pesos"]
-    
+
     # 1. Obtener datos
-    conteo_servicios = obtener_servicios_en_radio(gdf_servicios, lat, lon, radio_metros=1000)
-    
+    conteo_servicios = obtener_servicios_en_radio(
+        gdf_servicios, lat, lon, radio_metros=1000
+    )
+
     puntaje_total_ponderado = 0
     suma_pesos_maximos = 0
     detalles = {}
-    
+
     # 2. Calcular
     for servicio, conteo in conteo_servicios.items():
         puntaje_norm = normalizar_conteo(servicio, conteo)
         peso = pesos_perfil.get(servicio, 1)
-        
+
         aporte = puntaje_norm * peso
         puntaje_total_ponderado += aporte
         suma_pesos_maximos += peso
-        
-        if aporte > 0:
-            detalles[servicio] = {
-                "conteo": conteo,
-                "score_norm": round(puntaje_norm, 2),
-                "importancia": peso,
-                "aporte_final": round(aporte, 2)
-            }
-            
+
+        # Include all services in details, even with zero contributions
+        detalles[servicio] = {
+            "conteo": conteo,
+            "score_norm": round(puntaje_norm, 2),
+            "importancia": peso,
+            "aporte_final": round(aporte, 2),
+        }
+
     # 3. Final
     if suma_pesos_maximos == 0:
         indice_final = 0
     else:
         indice_final = (puntaje_total_ponderado / suma_pesos_maximos) * 100
-        
+
     return {
         "indice": round(indice_final, 1),
         "perfil": perfil_key,
-        "lat": lat, "lon": lon,
-        "detalles": detalles
+        "lat": lat,
+        "lon": lon,
+        "detalles": detalles,
     }

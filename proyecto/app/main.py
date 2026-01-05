@@ -55,11 +55,9 @@ def cargar_indicadores() -> pd.DataFrame:
 
 # Función wrapper (SIN caché para que chequee siempre el mtime)
 def cargar_accesibilidad() -> pd.DataFrame:
-    # Usamos desiertos_servicios.csv como fuente principal de accesibilidad 
+    # Usamos desiertos_servicios.csv como fuente principal de accesibilidad
     # ya que es la tabla maestra procesada con todos los datos finales.
     return cargar_desiertos()
-
-
 
 
 # Función wrapper (SIN caché)
@@ -69,19 +67,22 @@ def cargar_desiertos() -> pd.DataFrame:
     """
     if not DESIERTOS_PATH.exists():
         return pd.DataFrame()
-        
+
     mtime = DESIERTOS_PATH.stat().st_mtime
-    
+
     # Manejamos el archivo de indicadores como dependencia opcional para el caché
     meta_mtime = None
     if INDICADORES_PATH.exists():
         meta_mtime = INDICADORES_PATH.stat().st_mtime
-        
+
     return _load_desiertos_content(DESIERTOS_PATH, mtime, INDICADORES_PATH, meta_mtime)
+
 
 # Función worker (CON caché)
 @st.cache_data
-def _load_desiertos_content(path: Path, _mtime: float, meta_path: Path = None, _meta_mtime: float = None) -> pd.DataFrame:
+def _load_desiertos_content(
+    path: Path, _mtime: float, meta_path: Path = None, _meta_mtime: float = None
+) -> pd.DataFrame:
     """
     Carga el CSV de desiertos y lo enriquece de forma segura con población.
     La firma de la función incluye _meta_mtime para que Streamlit invalide
@@ -102,12 +103,14 @@ def _load_desiertos_content(path: Path, _mtime: float, meta_path: Path = None, _
                 df = df.merge(
                     indicadores[["cod_comuna", "poblacion"]],
                     on="cod_comuna",
-                    how="left"
+                    how="left",
                 )
         except Exception as e:
             # Fallback silencioso en UI pero logueado en consola
-            print(f"Aviso: No se pudo enriquecer con población desde {meta_path.name}: {e}")
-            
+            print(
+                f"Aviso: No se pudo enriquecer con población desde {meta_path.name}: {e}"
+            )
+
     return df
 
 
@@ -149,6 +152,7 @@ def cargar_html_template(template_name: str) -> str:
     template_path = Path(__file__).parent / "views" / template_name
     mtime = template_path.stat().st_mtime
     return _load_template_content(template_path, mtime)
+
 
 # Worker (CON caché)
 @st.cache_data
@@ -199,7 +203,7 @@ with st.sidebar:
                 "background-color": "transparent",
             },
             "icon": {
-                "color": "#b6bac2", 
+                "color": "#b6bac2",
                 "font-size": "18px",
             },
             "nav-link": {
@@ -280,12 +284,14 @@ if seccion == "Introducción y datos":
         st.markdown("**Capas disponibles en geodatabase_proyecto.gpkg**")
         if not catalogo.empty:
             # Renombrar columnas para mejor visualización
-            catalogo_display = catalogo.rename(columns={
-                "capa": "Capa",
-                "n_registros": "N° Registros",
-                "tipo_geometria": "Tipo Geometría",
-                "crs": "Sistema de Coordenadas"
-            })
+            catalogo_display = catalogo.rename(
+                columns={
+                    "capa": "Capa",
+                    "n_registros": "N° Registros",
+                    "tipo_geometria": "Tipo Geometría",
+                    "crs": "Sistema de Coordenadas",
+                }
+            )
             st.dataframe(catalogo_display, use_container_width=True)
         else:
             st.info("No se encontró el catálogo de capas. Revise notebooks 00–01.")
@@ -426,7 +432,7 @@ elif seccion == "Accesibilidad":
         "Infraestructura Deportiva": "deporte_infra",
         "Ferias Libres": "ferias_libres",
     }
-    
+
     servicio_sel = st.selectbox("Seleccionar Servicio", list(opciones.keys()))
     metric_col = opciones[servicio_sel]
 
@@ -441,24 +447,26 @@ elif seccion == "Accesibilidad":
         with col1:
             st.markdown(f"**Comunas con mayor tiempo de viaje a {servicio_sel}**")
             # Filtrar nulos si existen para el ranking
-            df_dist = accesibilidad[["comuna", metric_col]].dropna().sort_values(
-                metric_col, ascending=False
+            df_dist = (
+                accesibilidad[["comuna", metric_col]]
+                .dropna()
+                .sort_values(metric_col, ascending=False)
             )
-            df_dist = df_dist.rename(columns={
-                "comuna": "Comuna",
-                metric_col: "Tiempo (min)"
-            })
+            df_dist = df_dist.rename(
+                columns={"comuna": "Comuna", metric_col: "Tiempo (min)"}
+            )
             st.dataframe(df_dist.head(10), use_container_width=True)
 
         with col2:
             st.markdown(f"**Comunas con mejor acceso a {servicio_sel}**")
-            df_cov = accesibilidad[["comuna", metric_col]].dropna().sort_values(
-                metric_col, ascending=True
+            df_cov = (
+                accesibilidad[["comuna", metric_col]]
+                .dropna()
+                .sort_values(metric_col, ascending=True)
             )
-            df_cov = df_cov.rename(columns={
-                "comuna": "Comuna",
-                metric_col: "Tiempo (min)"
-            })
+            df_cov = df_cov.rename(
+                columns={"comuna": "Comuna", metric_col: "Tiempo (min)"}
+            )
             st.dataframe(df_cov.head(10), use_container_width=True)
 
         st.subheader(f"Mapa: Tiempo de viaje a {servicio_sel} (OTP)")
@@ -478,7 +486,7 @@ elif seccion == "Accesibilidad":
             cmap="OrRd",
             edgecolor="black",
             linewidth=0.3,
-            missing_kwds={"color": "lightgrey", "label": "Sin datos"}
+            missing_kwds={"color": "lightgrey", "label": "Sin datos"},
         )
         ax.set_axis_off()
         ax.set_title(f"Tiempo de viaje a {servicio_sel} (minutos)", fontsize=12)
@@ -533,14 +541,16 @@ elif seccion == "Desiertos de Servicio":
         ranking = desiertos[cols_rank].sort_values(
             "n_servicios_en_desierto", ascending=False
         )
-        
+
         # Renombrar columnas para mejor visualización
-        ranking_display = ranking.rename(columns={
-            "cod_comuna": "Código Comuna",
-            "comuna": "Comuna",
-            "poblacion": "Población",
-            "n_servicios_en_desierto": "N° Servicios en Desierto"
-        })
+        ranking_display = ranking.rename(
+            columns={
+                "cod_comuna": "Código Comuna",
+                "comuna": "Comuna",
+                "poblacion": "Población",
+                "n_servicios_en_desierto": "N° Servicios en Desierto",
+            }
+        )
         st.dataframe(ranking_display.head(15), use_container_width=True)
 
         st.subheader("Mapa índice de desiertos")
@@ -575,27 +585,36 @@ elif seccion == "Desiertos de Servicio":
             st.markdown(
                 "1 indica que la comuna se clasifica como desierto para ese servicio, 0 indica que no."
             )
-            
-            cols_detalle = ["cod_comuna", "comuna", "poblacion", "n_servicios_en_desierto"]
-            cols_detalle = [c for c in cols_detalle if c in desiertos.columns] + banderas
+
+            cols_detalle = [
+                "cod_comuna",
+                "comuna",
+                "poblacion",
+                "n_servicios_en_desierto",
+            ]
+            cols_detalle = [
+                c for c in cols_detalle if c in desiertos.columns
+            ] + banderas
 
             desiertos_detalle = desiertos[cols_detalle].sort_values(
                 "n_servicios_en_desierto", ascending=False
             )
-            
+
             # Renombrar columnas base
             rename_dict = {
                 "cod_comuna": "Código Comuna",
                 "comuna": "Comuna",
                 "poblacion": "Población",
-                "n_servicios_en_desierto": "N° Servicios en Desierto"
+                "n_servicios_en_desierto": "N° Servicios en Desierto",
             }
-            
+
             # Renombrar banderas (es_desierto_xxx -> Desierto: Xxx)
             for col in banderas:
-                servicio_name = col.replace("es_desierto_", "").replace("_", " ").title()
+                servicio_name = (
+                    col.replace("es_desierto_", "").replace("_", " ").title()
+                )
                 rename_dict[col] = f"Desierto: {servicio_name}"
-            
+
             desiertos_display = desiertos_detalle.rename(columns=rename_dict)
             st.dataframe(desiertos_display, use_container_width=True)
 
@@ -674,19 +693,21 @@ elif seccion == "Calculadora Calidad de Vida":
     with st.spinner("Cargando motor de cálculo y base de datos de servicios..."):
         gdf_servicios = calc.cargar_servicios_unificados(RUTA_GPKG)
         if gdf_servicios.empty:
-            st.error("No se pudieron cargar los servicios. Verifique geodatabase_proyecto.gpkg")
+            st.error(
+                "No se pudieron cargar los servicios. Verifique geodatabase_proyecto.gpkg"
+            )
             st.stop()
 
     col_config, col_map = st.columns([1, 2])
 
     with col_config:
         st.subheader("1. Configuración")
-        
+
         # Selector de Perfil
         perfil_sel = st.selectbox(
-            "Seleccione Perfil", 
+            "Seleccione Perfil",
             list(calc.PERFILES_USUARIO.keys()),
-            format_func=lambda x: x.replace("_", " ").title()
+            format_func=lambda x: x.replace("_", " ").title(),
         )
         desc = calc.PERFILES_USUARIO[perfil_sel]["desc"]
         st.info(f"💡 **Enfoque**: {desc}")
@@ -697,24 +718,24 @@ elif seccion == "Calculadora Calidad de Vida":
         # Nota: lat_val/lon_val aún no existen como variables locales de input, usamos session_state directo
         curr_lat = st.session_state.lat_calc
         curr_lon = st.session_state.lon_calc
-        
+
         # Crear mapa centrado en la selección actual
         m = folium.Map(location=[curr_lat, curr_lon], zoom_start=14)
-        
+
         # Marcador en la posición actual
         folium.Marker(
-            [curr_lat, curr_lon], 
+            [curr_lat, curr_lon],
             popup="Ubicación Objetivo",
-            icon=folium.Icon(color="red", icon="star")
+            icon=folium.Icon(color="red", icon="star"),
         ).add_to(m)
-        
+
         # Círculo de radio 1000m (para referencia visual)
         folium.Circle(
             location=[curr_lat, curr_lon],
             radius=1000,
             color="blue",
             fill=True,
-            fill_opacity=0.1
+            fill_opacity=0.1,
         ).add_to(m)
 
         # Capturar clics
@@ -727,9 +748,12 @@ elif seccion == "Calculadora Calidad de Vida":
         if map_data and map_data.get("last_clicked"):
             click_lat = map_data["last_clicked"]["lat"]
             click_lng = map_data["last_clicked"]["lng"]
-            
+
             # Si cambia respecto a lo guardado, actualizamos y recargamos
-            if abs(click_lat - st.session_state.lat_calc) > 0.0001 or abs(click_lng - st.session_state.lon_calc) > 0.0001:
+            if (
+                abs(click_lat - st.session_state.lat_calc) > 0.0001
+                or abs(click_lng - st.session_state.lon_calc) > 0.0001
+            ):
                 st.session_state.lat_calc = click_lat
                 st.session_state.lon_calc = click_lng
                 # Actualizar también los inputs directamente (ahora es seguro porque inputs no se han creado aún)
@@ -742,32 +766,46 @@ elif seccion == "Calculadora Calidad de Vida":
 
         st.subheader("2. Ubicación")
         st.markdown("Haga clic en el mapa o ajuste las coordenadas:")
-        
+
         # Callback para cuando el usuario edita manual
         def update_coords():
             st.session_state.lat_calc = st.session_state.input_lat
             st.session_state.lon_calc = st.session_state.input_lon
 
-        lat_val = st.number_input("Latitud", value=st.session_state.lat_calc, format="%.5f", key="input_lat", on_change=update_coords)
-        lon_val = st.number_input("Longitud", value=st.session_state.lon_calc, format="%.5f", key="input_lon", on_change=update_coords)
-        
+        lat_val = st.number_input(
+            "Latitud",
+            value=st.session_state.lat_calc,
+            format="%.5f",
+            key="input_lat",
+            on_change=update_coords,
+        )
+        lon_val = st.number_input(
+            "Longitud",
+            value=st.session_state.lon_calc,
+            format="%.5f",
+            key="input_lon",
+            on_change=update_coords,
+        )
+
         # Botón Calcular
         st.divider()
-        btn_calcular = st.button("🚀 Calcular Índice", type="primary", use_container_width=True)
-
-
+        btn_calcular = st.button(
+            "🚀 Calcular Índice", type="primary", use_container_width=True
+        )
 
     # RESULTADOS
     if btn_calcular:
         st.markdown("---")
-        res = calc.calcular_indice_calidad_vida(gdf_servicios, lat_val, lon_val, perfil_sel)
-        
+        res = calc.calcular_indice_calidad_vida(
+            gdf_servicios, lat_val, lon_val, perfil_sel
+        )
+
         if "error" in res:
             st.error(res["error"])
         else:
             score = res["indice"]
             detalles = res["detalles"]
-            
+
             # Header de resultados
             c_score, c_msg = st.columns([1, 3])
             with c_score:
@@ -778,32 +816,82 @@ elif seccion == "Calculadora Calidad de Vida":
                 elif score >= 50:
                     st.warning("⚠️ **Ubicación regular**, tiene carencias.")
                 else:
-                    st.error("🛑 **Zona deficiente** para las necesidades de este perfil.")
-            
-            st.subheader("📊 Desglose del Puntaje")
-            
-            if detalles:
-                # Preparamos datos para visualización
-                rows = []
-                for srv, val in detalles.items():
-                    rows.append({
-                        "Servicio": srv,
-                        "Conteo": val["conteo"],
-                        "Importancia (1-5)": val["importancia"],
-                        "Aporte Puntos": val["aporte_final"],
-                        "Score Norm": val["score_norm"]
-                    })
-                df_res = pd.DataFrame(rows).sort_values("Aporte Puntos", ascending=False)
-                
-                tab_tabla, tab_grafico = st.tabs(["Tabla Detallada", "Gráfico de Aporte"])
-                
-                with tab_tabla:
-                    st.dataframe(
-                        df_res.style.background_gradient(subset=["Aporte Puntos"], cmap="Greens"),
-                        use_container_width=True
+                    st.error(
+                        "🛑 **Zona deficiente** para las necesidades de este perfil."
                     )
-                
-                with tab_grafico:
-                    st.bar_chart(df_res.set_index("Servicio")["Aporte Puntos"])
+
+            st.subheader("📊 Desglose del Puntaje")
+
+            if detalles:
+                # Split services into available and missing
+                servicios_disponibles = {
+                    k: v for k, v in detalles.items() if v["conteo"] > 0
+                }
+                servicios_faltantes = {
+                    k: v for k, v in detalles.items() if v["conteo"] == 0
+                }
+
+                # Create tabs for categorized display
+                tab_disponibles, tab_faltantes = st.tabs(
+                    ["🏪 Servicios Disponibles", "❌ Servicios Faltantes"]
+                )
+
+                with tab_disponibles:
+                    if servicios_disponibles:
+                        rows_disp = []
+                        for srv, val in servicios_disponibles.items():
+                            rows_disp.append(
+                                {
+                                    "Servicio": srv,
+                                    "Conteo": val["conteo"],
+                                    "Importancia (1-5)": val["importancia"],
+                                    "Aporte Puntos": val["aporte_final"],
+                                    "Score Norm": val["score_norm"],
+                                }
+                            )
+                        df_disp = pd.DataFrame(rows_disp).sort_values(
+                            "Aporte Puntos", ascending=False
+                        )
+                        st.dataframe(
+                            df_disp.style.background_gradient(
+                                subset=["Aporte Puntos"], cmap="Greens"
+                            ),
+                            use_container_width=True,
+                        )
+                    else:
+                        st.info(
+                            "No se encontraron servicios disponibles en este radio de 1000m."
+                        )
+
+                with tab_faltantes:
+                    if servicios_faltantes:
+                        rows_falt = []
+                        for srv, val in servicios_faltantes.items():
+                            rows_falt.append(
+                                {
+                                    "Servicio": srv,
+                                    "Conteo": val["conteo"],
+                                    "Importancia (1-5)": val["importancia"],
+                                    "Aporte Puntos": val["aporte_final"],
+                                    "Score Norm": val["score_norm"],
+                                }
+                            )
+                        df_falt = pd.DataFrame(rows_falt).sort_values("Servicio")
+                        st.dataframe(
+                            df_falt.style.apply(
+                                lambda x: ["color: gray" for _ in x], axis=1
+                            ),
+                            use_container_width=True,
+                        )
+                        st.warning(
+                            "Estos servicios no se encontraron en las cercanías. Considera buscar en un radio mayor o en otra ubicación."
+                        )
+                    else:
+                        st.success(
+                            "¡Todos los servicios evaluados están disponibles en las cercanías!"
+                        )
+
             else:
-                st.info("No se encontraron servicios que aporten puntaje en este radio de 1000m.")
+                st.info(
+                    "No se encontraron servicios que aporten puntaje en este radio de 1000m."
+                )
