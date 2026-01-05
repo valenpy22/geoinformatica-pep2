@@ -167,6 +167,86 @@ def obtener_servicios_en_radio(gdf_servicios, lat, lon, radio_metros=1000):
     return conteo
 
 
+def obtener_geometrias_servicios_en_radio(gdf_servicios, lat, lon, radio_metros=1000):
+    """
+    Retorna las geometrías de servicios encontrados alrededor de (lat, lon).
+    Útil para visualizar los puntos en el mapa.
+    """
+    # 1. Crear punto usuario (WGS84 -> EPSG:32719)
+    punto_usuario = gpd.GeoDataFrame(
+        geometry=[Point(lon, lat)], crs="EPSG:4326"
+    ).to_crs(gdf_servicios.crs)
+
+    # 2. Crear buffer
+    circulo = punto_usuario.buffer(radio_metros).iloc[0]
+
+    # 3. Filtrar espacialmente
+    servicios_cercanos = gdf_servicios[gdf_servicios.intersects(circulo)]
+
+    # 4. Convertir a WGS84 para Folium (que usa coordenadas geográficas)
+    if not servicios_cercanos.empty:
+        servicios_cercanos = servicios_cercanos.to_crs("EPSG:4326")
+
+    return servicios_cercanos
+
+
+def obtener_servicios_mas_cercanos(
+    gdf_servicios, lat, lon, tipos_faltantes, radio_metros=1000
+):
+    """
+    Para cada tipo de servicio faltante, encuentra el servicio más cercano fuera del radio.
+    Retorna un diccionario con {tipo_servicio: (distancia_m, geometria_wgs84, fila_completa)}
+    """
+    # 1. Crear punto usuario
+    punto_usuario = gpd.GeoDataFrame(
+        geometry=[Point(lon, lat)], crs="EPSG:4326"
+    ).to_crs(gdf_servicios.crs)
+
+    # 2. Crear buffer
+    circulo = punto_usuario.buffer(radio_metros).iloc[0]
+
+    # 3. Servicios fuera del radio
+    servicios_fuera_radio = gdf_servicios[~gdf_servicios.intersects(circulo)]
+
+    resultados = {}
+
+    for tipo in tipos_faltantes:
+        # Filtrar por tipo
+        servicios_tipo = servicios_fuera_radio[
+            servicios_fuera_radio["tipo_servicio"] == tipo
+        ]
+
+        if not servicios_tipo.empty:
+            # Calcular distancias desde cada servicio hasta el punto usuario
+            punto_geom = punto_usuario.iloc[0].geometry
+            distancias = servicios_tipo.geometry.distance(punto_geom)
+
+            # Encontrar el más cercano
+            idx_min = distancias.idxmin()
+            distancia_min = distancias.min()
+            servicio_mas_cercano = servicios_tipo.loc[idx_min]
+
+            # Convertir geometría a WGS84
+            geom_wgs84 = servicio_mas_cercano.geometry
+            if gdf_servicios.crs != "EPSG:4326":
+                punto_wgs84 = (
+                    gpd.GeoDataFrame(geometry=[geom_wgs84], crs=gdf_servicios.crs)
+                    .to_crs("EPSG:4326")
+                    .iloc[0]
+                    .geometry
+                )
+            else:
+                punto_wgs84 = geom_wgs84
+
+            resultados[tipo] = {
+                "distancia_m": distancia_min,
+                "geometria": punto_wgs84,
+                "servicio": servicio_mas_cercano,
+            }
+
+    return resultados
+
+
 def normalizar_conteo(servicio_key, conteo_real):
     """
     Normaliza el conteo a puntaje 0.0 - 1.0 según SCORING_CONFIG.

@@ -698,6 +698,28 @@ elif seccion == "Calculadora Calidad de Vida":
             )
             st.stop()
 
+    # Definir colores para servicios
+    colores_servicio = {
+        "salud": "red",
+        "educacion_escolar": "blue",
+        "educacion_superior": "darkblue",
+        "supermercados": "green",
+        "almacenes_barrio": "lightgreen",
+        "bancos": "purple",
+        "ferias_libres": "orange",
+        "areas_verdes": "darkgreen",
+        "cuarteles_carabineros": "black",
+        "companias_bomberos": "darkred",
+        "estadios": "cadetblue",
+        "malls": "pink",
+        "bencineras": "gray",
+        "iglesias": "beige",
+        "museos": "lightblue",
+        "infraestructura_deportiva": "lightred",
+        "paradas_micro": "lightgray",
+        "paradas_metro_tren": "darkpurple",
+    }
+
     col_config, col_map = st.columns([1, 2])
 
     with col_config:
@@ -737,6 +759,55 @@ elif seccion == "Calculadora Calidad de Vida":
             fill=True,
             fill_opacity=0.1,
         ).add_to(m)
+
+        # Agregar servicios más cercanos si existen resultados de cálculo
+        servicios_mas_cercanos = {}
+        if st.session_state.get("calc_results"):
+            res = st.session_state.calc_results
+            detalles = res.get("detalles", {})
+            tipos_faltantes = [
+                tipo for tipo, info in detalles.items() if info["conteo"] == 0
+            ]
+
+            if tipos_faltantes:
+                servicios_mas_cercanos = calc.obtener_servicios_mas_cercanos(
+                    gdf_servicios,
+                    curr_lat,
+                    curr_lon,
+                    tipos_faltantes,
+                    radio_metros=1000,
+                )
+
+                # Agregar servicios más cercanos al mapa principal
+                for tipo, info in servicios_mas_cercanos.items():
+                    color = colores_servicio.get(tipo, "blue")
+                    geom = info["geometria"]
+
+                    # Handle geometry types
+                    if hasattr(geom, "y") and hasattr(geom, "x"):
+                        lat, lon = geom.y, geom.x
+                    else:
+                        centroid = geom.centroid if hasattr(geom, "centroid") else geom
+                        lat, lon = centroid.y, centroid.x
+
+                    distancia = info["distancia_m"]
+
+                    # Usar estrella para servicios más cercanos
+                    folium.Marker(
+                        location=[lat, lon],
+                        popup=f"{tipo.replace('_', ' ').title()}<br>Más cercano: {distancia:.0f}m fuera del radio",
+                        icon=folium.Icon(color=color, icon="star"),
+                    ).add_to(m)
+
+                    # Línea punteada desde el punto objetivo al servicio más cercano
+                    folium.PolyLine(
+                        locations=[[curr_lat, curr_lon], [lat, lon]],
+                        color=color,
+                        weight=2,
+                        opacity=0.6,
+                        dash_array="5, 5",
+                        popup=f"Distancia: {distancia:.0f}m",
+                    ).add_to(m)
 
         # Capturar clics
         # Usamos una key dinámica para forzar al mapa a redibujarse cuando cambian las coordenadas
@@ -796,13 +867,27 @@ elif seccion == "Calculadora Calidad de Vida":
     # RESULTADOS
     if btn_calcular:
         st.markdown("---")
-        res = calc.calcular_indice_calidad_vida(
-            gdf_servicios, lat_val, lon_val, perfil_sel
-        )
+        with st.spinner("Calculando índice de calidad de vida..."):
+            res = calc.calcular_indice_calidad_vida(
+                gdf_servicios, lat_val, lon_val, perfil_sel
+            )
 
+        # Store results in session state for persistence
         if "error" in res:
-            st.error(res["error"])
+            st.session_state.calc_error = res["error"]
+            st.session_state.calc_results = None
         else:
+            st.session_state.calc_results = res
+            st.session_state.calc_error = None
+
+    # Display results if they exist in session state
+    if st.session_state.get("calc_results") or st.session_state.get("calc_error"):
+        st.markdown("---")
+
+        if st.session_state.get("calc_error"):
+            st.error(st.session_state.calc_error)
+        else:
+            res = st.session_state.calc_results
             score = res["indice"]
             detalles = res["detalles"]
 
@@ -867,10 +952,17 @@ elif seccion == "Calculadora Calidad de Vida":
                     if servicios_faltantes:
                         rows_falt = []
                         for srv, val in servicios_faltantes.items():
+                            # Agregar información del servicio más cercano si existe
+                            distancia_cercana = ""
+                            if srv in servicios_mas_cercanos:
+                                dist = servicios_mas_cercanos[srv]["distancia_m"]
+                                distancia_cercana = f"{dist:.0f}m"
+
                             rows_falt.append(
                                 {
                                     "Servicio": srv,
                                     "Conteo": val["conteo"],
+                                    "Más Cercano": distancia_cercana,
                                     "Importancia (1-5)": val["importancia"],
                                     "Aporte Puntos": val["aporte_final"],
                                     "Score Norm": val["score_norm"],
@@ -883,9 +975,15 @@ elif seccion == "Calculadora Calidad de Vida":
                             ),
                             use_container_width=True,
                         )
-                        st.warning(
-                            "Estos servicios no se encontraron en las cercanías. Considera buscar en un radio mayor o en otra ubicación."
-                        )
+
+                        if servicios_mas_cercanos:
+                            st.info(
+                                "💡 **Servicios más cercanos marcados con ⭐ en el mapa.** Las distancias se muestran en la tabla y como líneas punteadas en el mapa."
+                            )
+                        else:
+                            st.warning(
+                                "Estos servicios no se encontraron en las cercanías. Considera buscar en un radio mayor o en otra ubicación."
+                            )
                     else:
                         st.success(
                             "¡Todos los servicios evaluados están disponibles en las cercanías!"
