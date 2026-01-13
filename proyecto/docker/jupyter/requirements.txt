@@ -38,6 +38,8 @@ ipyleaflet==0.18.1
 bokeh==3.3.2
 altair==5.2.0
 streamlit-folium>=0.17.0
+streamlit-option-menu>=0.3.0
+streamlit-navigation-bar>=3.0.0
 
 # Database
 psycopg2-binary==2.9.9
