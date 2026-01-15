@@ -9,6 +9,7 @@ import pandas as pd
 from folium import plugins
 from streamlit_folium import st_folium
 import streamlit as st
+import pydeck as pdk
 import calculator_backend as calc
 from streamlit_option_menu import option_menu
 
@@ -182,7 +183,8 @@ with st.sidebar:
         options=[
             "Introducción y datos",
             "Oferta de Servicios",
-            "Accesibilidad",
+            "Accesibilidad (Tiempo OTP)",
+            "Accesibilidad Física (Distancias)",
             "Desiertos de Servicio",
             "Mapa Interactivo de Puntos",
             "Calculadora Calidad de Vida",
@@ -191,6 +193,7 @@ with st.sidebar:
             "house-door",
             "bar-chart",
             "geo-alt",
+            "rulers",
             "exclamation-triangle",
             "map",
             "calculator",
@@ -389,9 +392,9 @@ elif seccion == "Oferta de Servicios":
 
 
 # ----------------------------------------------------------------------
-# Sección 3: Accesibilidad
+# Sección 3: Accesibilidad (Tiempo OTP)
 # ----------------------------------------------------------------------
-elif seccion == "Accesibilidad":
+elif seccion == "Accesibilidad (Tiempo OTP)":
     st.title("Accesibilidad a Servicios")
 
     accesibilidad = cargar_accesibilidad()
@@ -491,6 +494,147 @@ elif seccion == "Accesibilidad":
         ax.set_axis_off()
         ax.set_title(f"Tiempo de viaje a {servicio_sel} (minutos)", fontsize=12)
         st.pyplot(fig)
+
+
+# ----------------------------------------------------------------------
+# Sección 4: Accesibilidad Física (Proximidad geográfica)
+# ----------------------------------------------------------------------
+elif seccion == "Accesibilidad Física (Distancias)":
+    st.title("Accesibilidad Física (Distancia al más Cercano)")
+    st.markdown("Cálculo de distancia mínima (línea recta) desde el centroide comunal al servicio más cercano.")
+
+    with st.spinner("Calculando distancias..."):
+        # Cargamos base cartográfica y puntos de interés
+        comunas = cargar_geodataframe(LAYER_COMUNAS)
+        servicios = calc.cargar_servicios_unificados(RUTA_GPKG)
+
+        # Usamos centroides para simplificar el cálculo masivo inicial
+        if "centroide" not in comunas.columns:
+            comunas["centroide"] = comunas.centroid
+
+        origenes = comunas.copy()
+        origenes["geometry"] = comunas["centroide"]
+
+        # Cacheamos el cálculo pesado
+        @st.cache_data
+        def get_distancias_min_cached(_origenes, _servicios):
+            return calc.calcular_distancia_minima_por_categoria(_origenes, _servicios)
+
+        distancias_gdf = get_distancias_min_cached(origenes, servicios)
+
+    # UI de selección
+    categorias = list(calc.SERVICE_LAYERS.keys())
+    cat_sel = st.selectbox(
+        "Seleccione categoría de servicio",
+        categorias,
+        format_func=lambda x: x.replace("_", " ").title(),
+    )
+
+    col_dist = f"dist_min_{cat_sel}"
+
+    if col_dist in distancias_gdf.columns:
+        # Normalizar a KM para visualización
+        distancias_gdf["dist_km"] = distancias_gdf[col_dist] / 1000.0
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            st.subheader(f"Geografía del servicio: {cat_sel.replace('_', ' ').title()}")
+            
+            # --- Visualización 3D con PyDeck ---
+            # 1. Preparar datos (convertir a WGS84 para pydeck y extraer coords)
+            view_df = distancias_gdf.to_crs(epsg=4326).copy()
+            view_df["lng"] = view_df.geometry.x
+            view_df["lat"] = view_df.geometry.y
+            
+            # Formateamos el número aquí para que el tooltip de PyDeck lo lea ya redondeado
+            view_df["dist_km_label"] = view_df["dist_km"].round(2)
+            
+            # Limpieza Radical: Solo dejamos columnas numéricas y de texto básicas.
+            # PyDeck EXPLOTA si encuentra cualquier objeto de geometría (como 'centroide') en el DF.
+            cols_to_keep = ['lng', 'lat', 'dist_km', 'dist_km_label', 'COMUNA']
+            pydeck_data = view_df[cols_to_keep].copy()
+            pydeck_data = pd.DataFrame(pydeck_data) # Forzamos conversión a DataFrame puro
+            
+            # 2. Definir escala de colores (Rojo = Lejos, Amarillo/Verde = Cerca)
+            d_max = pydeck_data["dist_km"].max()
+            pydeck_data["color_val"] = (pydeck_data["dist_km"] / max(0.001, d_max)) * 255
+            
+            # 3. Crear el layer de columnas 3D
+            layer = pdk.Layer(
+                "ColumnLayer",
+                data=pydeck_data,
+                get_position=["lng", "lat"],
+                get_elevation="dist_km",
+                elevation_scale=1000, # Aumentamos escala para notar diferencia
+                radius=1800,          
+                get_fill_color=[255, "255 - color_val", 100, 200], 
+                pickable=True,
+                auto_highlight=True,
+            )
+
+            # 4. Vista inicial
+            view_state = pdk.ViewState(
+                latitude=view_df["lat"].mean(),
+                longitude=view_df["lng"].mean(),
+                zoom=9,
+                pitch=45,
+            )
+
+            # 5. Renderizar
+            st.pydeck_chart(pdk.Deck(
+                layers=[layer],
+                initial_view_state=view_state,
+                tooltip={"text": "{COMUNA}\nDistancia: {dist_km_label} km"},
+                map_style="dark" 
+            ))
+
+        with col2:
+            st.subheader("Ranking de Inaccesibilidad")
+            # Ordenamos por los valores más altos (peores distancias)
+            rank = (
+                distancias_gdf[["COMUNA", "dist_km"]]
+                .sort_values("dist_km", ascending=False)
+                .head(15)
+            )
+            st.table(rank.rename(columns={"COMUNA": "Comuna", "dist_km": "Distancia (km)"}))
+
+        # --- Bloque de Insights ---
+        mean_dist = distancias_gdf['dist_km'].mean()
+        max_dist = distancias_gdf['dist_km'].max()
+        min_dist = distancias_gdf['dist_km'].min()
+        std_dist = distancias_gdf['dist_km'].std()
+        
+        peor_comuna = rank.iloc[0]['COMUNA']
+        # Buscamos la mejor comuna (distancia mínima)
+        mejor_comunas_df = distancias_gdf.sort_values("dist_km")
+        mejor_comuna = mejor_comunas_df.iloc[0]['COMUNA']
+        
+        st.write("---")
+        st.subheader("🔍 Análisis de Disparidad Territorial")
+        
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Distancia Promedio", f"{mean_dist:.2f} km")
+        m2.metric("Brecha (Max-Min)", f"{(max_dist - min_dist):.2f} km")
+        m3.metric("Desviación Estándar", f"{std_dist:.2f} km")
+
+        label_servicio = cat_sel.replace('_', ' ').title()
+        
+        insight_items = [
+            f"Existe una **desigualdad física de {(max_dist/max(0.01, min_dist)):.1f} veces** entre la comuna con mejor acceso (**{mejor_comuna}**) y la periferia más alejada (**{peor_comuna}**).",
+        ]
+
+        if std_dist > (mean_dist * 0.5):
+            insight_items.append(f"⚠️ **Alta Heterogeneidad**: El acceso a {label_servicio} no es equitativo en la región; la dispersión sugiere concentraciones de oferta que dejan zonas desprovistas.")
+        
+        if max_dist > 10:
+            insight_items.append(f"🚨 **Dependencia Crítica**: Con distancias que superan los 10 km en {peor_comuna}, el acceso no motorizado es inviable, forzando la dependencia del transporte privado o público.")
+        elif max_dist < 3:
+            insight_items.append(f"✅ **Buena Capilaridad**: La mayoría de las comunas presentan distancias inferiores a 3 km, lo que indica una distribución territorial más balanceada de este servicio.")
+
+        st.info("\n".join([f"* {item}" for item in insight_items]))
+    else:
+        st.warning(f"No hay datos para la categoría {cat_sel}")
 
 
 # ----------------------------------------------------------------------

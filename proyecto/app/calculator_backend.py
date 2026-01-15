@@ -247,6 +247,28 @@ def obtener_servicios_mas_cercanos(
     return resultados
 
 
+def calcular_distancia_minima_por_categoria(gdf_origen, gdf_servicios):
+    """
+    Para cada punto en gdf_origen, calcula la distancia al servicio más cercano de cada tipo.
+    gdf_origen: GeoDataFrame con puntos.
+    gdf_servicios: GeoDataFrame unificado con columna 'tipo_servicio'.
+    """
+    res_df = gdf_origen.copy()
+
+    for tipo in gdf_servicios["tipo_servicio"].unique():
+        servicios_tipo = gdf_servicios[gdf_servicios["tipo_servicio"] == tipo]
+        if not servicios_tipo.empty:
+            # Usar sindex para velocidad
+            # Para cada punto de origen, encontrar la distancia al más cercano
+            distancias = []
+            for geom in gdf_origen.geometry:
+                d = servicios_tipo.distance(geom).min()
+                distancias.append(d)
+            res_df[f"dist_min_{tipo}"] = distancias
+
+    return res_df
+
+
 def normalizar_conteo(servicio_key, conteo_real):
     """
     Normaliza el conteo a puntaje 0.0 - 1.0 según SCORING_CONFIG.

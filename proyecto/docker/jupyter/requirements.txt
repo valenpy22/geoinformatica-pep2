@@ -38,11 +38,14 @@ ipyleaflet==0.18.1
 bokeh==3.3.2
 altair==5.2.0
 streamlit-folium>=0.17.0
+streamlit-option-menu>=0.3.0
+streamlit-navigation-bar>=3.0.0
 
 # Database
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
 geoalchemy2==0.14.3
+pydeck>=0.8.0
 
 # Image Processing
 scikit-image==0.22.0
