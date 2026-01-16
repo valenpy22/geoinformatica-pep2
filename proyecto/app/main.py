@@ -6,6 +6,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import cartopy.crs as ccrs
+from matplotlib_scalebar.scalebar import ScaleBar
 from folium import plugins
 from streamlit_folium import st_folium
 import streamlit as st
@@ -277,10 +279,50 @@ if seccion == "Introducción y datos":
 
     with col1:
         st.markdown("**Vista general de la capa de comunas (RM)**")
-        fig, ax = plt.subplots(figsize=(5, 5))
-        comunas.boundary.plot(ax=ax, color="black", linewidth=0.4)
+        fig = plt.figure(figsize=(5, 5))
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(19, southern_hemisphere=True))
+        comunas.boundary.plot(
+            ax=ax,
+            color="black",
+            linewidth=0.4,
+            transform=ccrs.UTM(19, southern_hemisphere=True),
+        )
         ax.set_axis_off()
         ax.set_title("Comunas Región Metropolitana")
+        # Agregar elementos del mapa
+        ax.gridlines(draw_labels=False, alpha=0.5)
+        scalebar = ScaleBar(
+            1, location="lower left", scale_loc="bottom", length_fraction=0.2, units="m"
+        )
+        ax.add_artist(scalebar)
+        ax.text(
+            0.02,
+            0.12,
+            "Datum: WGS84 / UTM 19S",
+            transform=ax.transAxes,
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.annotate(
+            "N",
+            xy=(0.95, 0.95),
+            xycoords="axes fraction",
+            fontsize=10,
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.arrow(
+            0.95,
+            0.9,
+            0,
+            0.05,
+            head_width=0.02,
+            head_length=0.02,
+            fc="black",
+            ec="black",
+            transform=ax.transAxes,
+        )
         st.pyplot(fig)
 
     with col2:
@@ -377,7 +419,8 @@ elif seccion == "Oferta de Servicios":
             how="left",
         )
 
-        fig, ax = plt.subplots(figsize=(7, 7))
+        fig = plt.figure(figsize=(7, 7))
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(19, southern_hemisphere=True))
         comunas_ind.plot(
             column=col_tasa,
             ax=ax,
@@ -385,9 +428,48 @@ elif seccion == "Oferta de Servicios":
             cmap="Blues",
             edgecolor="black",
             linewidth=0.3,
+            transform=ccrs.UTM(19, southern_hemisphere=True),
         )
         ax.set_axis_off()
         ax.set_title(f"{nombre_servicio} por 10.000 habitantes", fontsize=12)
+        # Agregar elementos del mapa
+        ax.gridlines(draw_labels=False, alpha=0.5)
+        scalebar = ScaleBar(
+            1,
+            location="lower left",
+            scale_loc="bottom",
+            length_fraction=0.15,
+            units="m",
+        )
+        ax.add_artist(scalebar)
+        ax.text(
+            0.02,
+            0.12,
+            "Datum: WGS84 / UTM 19S",
+            transform=ax.transAxes,
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.annotate(
+            "N",
+            xy=(0.95, 0.95),
+            xycoords="axes fraction",
+            fontsize=10,
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.arrow(
+            0.95,
+            0.9,
+            0,
+            0.05,
+            head_width=0.02,
+            head_length=0.02,
+            fc="black",
+            ec="black",
+            transform=ax.transAxes,
+        )
         st.pyplot(fig)
 
 
@@ -481,7 +563,8 @@ elif seccion == "Accesibilidad (Tiempo OTP)":
             how="left",
         )
 
-        fig, ax = plt.subplots(figsize=(7, 7))
+        fig = plt.figure(figsize=(7, 7))
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(19, southern_hemisphere=True))
         comunas_dist.plot(
             column=metric_col,
             ax=ax,
@@ -490,9 +573,48 @@ elif seccion == "Accesibilidad (Tiempo OTP)":
             edgecolor="black",
             linewidth=0.3,
             missing_kwds={"color": "lightgrey", "label": "Sin datos"},
+            transform=ccrs.UTM(19, southern_hemisphere=True),
         )
         ax.set_axis_off()
         ax.set_title(f"Tiempo de viaje a {servicio_sel} (minutos)", fontsize=12)
+        # Agregar elementos del mapa
+        ax.gridlines(draw_labels=False, alpha=0.5)
+        scalebar = ScaleBar(
+            1,
+            location="lower left",
+            scale_loc="bottom",
+            length_fraction=0.15,
+            units="m",
+        )
+        ax.add_artist(scalebar)
+        ax.text(
+            0.02,
+            0.12,
+            "Datum: WGS84 / UTM 19S",
+            transform=ax.transAxes,
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.annotate(
+            "N",
+            xy=(0.95, 0.95),
+            xycoords="axes fraction",
+            fontsize=10,
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.arrow(
+            0.95,
+            0.9,
+            0,
+            0.05,
+            head_width=0.02,
+            head_length=0.02,
+            fc="black",
+            ec="black",
+            transform=ax.transAxes,
+        )
         st.pyplot(fig)
 
 
@@ -501,7 +623,9 @@ elif seccion == "Accesibilidad (Tiempo OTP)":
 # ----------------------------------------------------------------------
 elif seccion == "Accesibilidad Física (Distancias)":
     st.title("Accesibilidad Física (Distancia al más Cercano)")
-    st.markdown("Cálculo de distancia mínima (línea recta) desde el centroide comunal al servicio más cercano.")
+    st.markdown(
+        "Cálculo de distancia mínima (línea recta) desde el centroide comunal al servicio más cercano."
+    )
 
     with st.spinner("Calculando distancias..."):
         # Cargamos base cartográfica y puntos de interés
@@ -540,35 +664,39 @@ elif seccion == "Accesibilidad Física (Distancias)":
 
         with col1:
             st.subheader(f"Geografía del servicio: {cat_sel.replace('_', ' ').title()}")
-            
+
             # --- Visualización 3D con PyDeck ---
             # 1. Preparar datos (convertir a WGS84 para pydeck y extraer coords)
             view_df = distancias_gdf.to_crs(epsg=4326).copy()
             view_df["lng"] = view_df.geometry.x
             view_df["lat"] = view_df.geometry.y
-            
+
             # Formateamos el número aquí para que el tooltip de PyDeck lo lea ya redondeado
             view_df["dist_km_label"] = view_df["dist_km"].round(2)
-            
+
             # Limpieza Radical: Solo dejamos columnas numéricas y de texto básicas.
             # PyDeck EXPLOTA si encuentra cualquier objeto de geometría (como 'centroide') en el DF.
-            cols_to_keep = ['lng', 'lat', 'dist_km', 'dist_km_label', 'COMUNA']
+            cols_to_keep = ["lng", "lat", "dist_km", "dist_km_label", "COMUNA"]
             pydeck_data = view_df[cols_to_keep].copy()
-            pydeck_data = pd.DataFrame(pydeck_data) # Forzamos conversión a DataFrame puro
-            
+            pydeck_data = pd.DataFrame(
+                pydeck_data
+            )  # Forzamos conversión a DataFrame puro
+
             # 2. Definir escala de colores (Rojo = Lejos, Amarillo/Verde = Cerca)
             d_max = pydeck_data["dist_km"].max()
-            pydeck_data["color_val"] = (pydeck_data["dist_km"] / max(0.001, d_max)) * 255
-            
+            pydeck_data["color_val"] = (
+                pydeck_data["dist_km"] / max(0.001, d_max)
+            ) * 255
+
             # 3. Crear el layer de columnas 3D
             layer = pdk.Layer(
                 "ColumnLayer",
                 data=pydeck_data,
                 get_position=["lng", "lat"],
                 get_elevation="dist_km",
-                elevation_scale=1000, # Aumentamos escala para notar diferencia
-                radius=1800,          
-                get_fill_color=[255, "255 - color_val", 100, 200], 
+                elevation_scale=1000,  # Aumentamos escala para notar diferencia
+                radius=1800,
+                get_fill_color=[255, "255 - color_val", 100, 200],
                 pickable=True,
                 auto_highlight=True,
             )
@@ -582,12 +710,14 @@ elif seccion == "Accesibilidad Física (Distancias)":
             )
 
             # 5. Renderizar
-            st.pydeck_chart(pdk.Deck(
-                layers=[layer],
-                initial_view_state=view_state,
-                tooltip={"text": "{COMUNA}\nDistancia: {dist_km_label} km"},
-                map_style="dark" 
-            ))
+            st.pydeck_chart(
+                pdk.Deck(
+                    layers=[layer],
+                    initial_view_state=view_state,
+                    tooltip={"text": "{COMUNA}\nDistancia: {dist_km_label} km"},
+                    map_style="dark",
+                )
+            )
 
         with col2:
             st.subheader("Ranking de Inaccesibilidad")
@@ -597,40 +727,48 @@ elif seccion == "Accesibilidad Física (Distancias)":
                 .sort_values("dist_km", ascending=False)
                 .head(15)
             )
-            st.table(rank.rename(columns={"COMUNA": "Comuna", "dist_km": "Distancia (km)"}))
+            st.table(
+                rank.rename(columns={"COMUNA": "Comuna", "dist_km": "Distancia (km)"})
+            )
 
         # --- Bloque de Insights ---
-        mean_dist = distancias_gdf['dist_km'].mean()
-        max_dist = distancias_gdf['dist_km'].max()
-        min_dist = distancias_gdf['dist_km'].min()
-        std_dist = distancias_gdf['dist_km'].std()
-        
-        peor_comuna = rank.iloc[0]['COMUNA']
+        mean_dist = distancias_gdf["dist_km"].mean()
+        max_dist = distancias_gdf["dist_km"].max()
+        min_dist = distancias_gdf["dist_km"].min()
+        std_dist = distancias_gdf["dist_km"].std()
+
+        peor_comuna = rank.iloc[0]["COMUNA"]
         # Buscamos la mejor comuna (distancia mínima)
         mejor_comunas_df = distancias_gdf.sort_values("dist_km")
-        mejor_comuna = mejor_comunas_df.iloc[0]['COMUNA']
-        
+        mejor_comuna = mejor_comunas_df.iloc[0]["COMUNA"]
+
         st.write("---")
         st.subheader("🔍 Análisis de Disparidad Territorial")
-        
+
         m1, m2, m3 = st.columns(3)
         m1.metric("Distancia Promedio", f"{mean_dist:.2f} km")
         m2.metric("Brecha (Max-Min)", f"{(max_dist - min_dist):.2f} km")
         m3.metric("Desviación Estándar", f"{std_dist:.2f} km")
 
-        label_servicio = cat_sel.replace('_', ' ').title()
-        
+        label_servicio = cat_sel.replace("_", " ").title()
+
         insight_items = [
-            f"Existe una **desigualdad física de {(max_dist/max(0.01, min_dist)):.1f} veces** entre la comuna con mejor acceso (**{mejor_comuna}**) y la periferia más alejada (**{peor_comuna}**).",
+            f"Existe una **desigualdad física de {(max_dist / max(0.01, min_dist)):.1f} veces** entre la comuna con mejor acceso (**{mejor_comuna}**) y la periferia más alejada (**{peor_comuna}**).",
         ]
 
         if std_dist > (mean_dist * 0.5):
-            insight_items.append(f"⚠️ **Alta Heterogeneidad**: El acceso a {label_servicio} no es equitativo en la región; la dispersión sugiere concentraciones de oferta que dejan zonas desprovistas.")
-        
+            insight_items.append(
+                f"⚠️ **Alta Heterogeneidad**: El acceso a {label_servicio} no es equitativo en la región; la dispersión sugiere concentraciones de oferta que dejan zonas desprovistas."
+            )
+
         if max_dist > 10:
-            insight_items.append(f"🚨 **Dependencia Crítica**: Con distancias que superan los 10 km en {peor_comuna}, el acceso no motorizado es inviable, forzando la dependencia del transporte privado o público.")
+            insight_items.append(
+                f"🚨 **Dependencia Crítica**: Con distancias que superan los 10 km en {peor_comuna}, el acceso no motorizado es inviable, forzando la dependencia del transporte privado o público."
+            )
         elif max_dist < 3:
-            insight_items.append(f"✅ **Buena Capilaridad**: La mayoría de las comunas presentan distancias inferiores a 3 km, lo que indica una distribución territorial más balanceada de este servicio.")
+            insight_items.append(
+                f"✅ **Buena Capilaridad**: La mayoría de las comunas presentan distancias inferiores a 3 km, lo que indica una distribución territorial más balanceada de este servicio."
+            )
 
         st.info("\n".join([f"* {item}" for item in insight_items]))
     else:
@@ -706,7 +844,8 @@ elif seccion == "Desiertos de Servicio":
             how="left",
         )
 
-        fig, ax = plt.subplots(figsize=(7, 7))
+        fig = plt.figure(figsize=(7, 7))
+        ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(19, southern_hemisphere=True))
         comunas_desiertos.plot(
             column="n_servicios_en_desierto",
             ax=ax,
@@ -714,10 +853,49 @@ elif seccion == "Desiertos de Servicio":
             cmap="Reds",
             edgecolor="black",
             linewidth=0.3,
+            transform=ccrs.UTM(19, southern_hemisphere=True),
         )
         ax.set_axis_off()
         ax.set_title(
             "Número de servicios en condición de desierto por comuna", fontsize=12
+        )
+        # Agregar elementos del mapa
+        ax.gridlines(draw_labels=False, alpha=0.5)
+        scalebar = ScaleBar(
+            1,
+            location="lower left",
+            scale_loc="bottom",
+            length_fraction=0.15,
+            units="m",
+        )
+        ax.add_artist(scalebar)
+        ax.text(
+            0.02,
+            0.12,
+            "Datum: WGS84 / UTM 19S",
+            transform=ax.transAxes,
+            fontsize=8,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.annotate(
+            "N",
+            xy=(0.95, 0.95),
+            xycoords="axes fraction",
+            fontsize=10,
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+        ax.arrow(
+            0.95,
+            0.9,
+            0,
+            0.05,
+            head_width=0.02,
+            head_length=0.02,
+            fc="black",
+            ec="black",
+            transform=ax.transAxes,
         )
         st.pyplot(fig)
 

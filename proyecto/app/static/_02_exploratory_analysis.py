@@ -17,6 +17,8 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
+import cartopy.crs as ccrs
+from matplotlib_scalebar.scalebar import ScaleBar
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
@@ -35,18 +37,22 @@ def run_section(st_module: st) -> None:
     st_module : module
         Módulo `streamlit` inyectado desde la aplicación principal.
     """
-    st_module.subheader("02. Análisis exploratorio de datos espaciales (ESDA) – Cerrillos")
+    st_module.subheader(
+        "02. Análisis exploratorio de datos espaciales (ESDA) – Cerrillos"
+    )
 
     # -------------------------------------------------------------------------
     # 1. Carga de datos espaciales
     # -------------------------------------------------------------------------
     try:
         cerrillos = gpd.read_file(RAW_DIR / "cerrillos_limite.shp").to_crs(epsg=32719)
-        buildings = gpd.read_file(
-            RAW_DIR / "osm_buildings_cerrillos.geojson"
-        ).to_crs(epsg=32719)
+        buildings = gpd.read_file(RAW_DIR / "osm_buildings_cerrillos.geojson").to_crs(
+            epsg=32719
+        )
     except Exception as exc:
-        st_module.error(f"No se pudieron cargar los datos de Cerrillos.\n\nDetalle: {exc}")
+        st_module.error(
+            f"No se pudieron cargar los datos de Cerrillos.\n\nDetalle: {exc}"
+        )
         return
 
     # Cálculo de área de cada edificio
@@ -60,18 +66,59 @@ def run_section(st_module: st) -> None:
     # -------------------------------------------------------------------------
     st_module.markdown("#### Mapa: distribución de edificaciones")
 
-    fig, ax = plt.subplots(figsize=(8, 8))
-    cerrillos.boundary.plot(ax=ax, color="red", linewidth=2)
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(19, southern_hemisphere=True))
+    cerrillos.boundary.plot(
+        ax=ax,
+        color="red",
+        linewidth=2,
+        transform=ccrs.UTM(19, southern_hemisphere=True),
+    )
     buildings.plot(
         ax=ax,
         color="lightgray",
         edgecolor="black",
         linewidth=0.2,
         alpha=0.7,
+        transform=ccrs.UTM(19, southern_hemisphere=True),
     )
 
     ax.set_title("Distribución de edificaciones en Cerrillos")
     ax.set_axis_off()
+    # Agregar elementos del mapa
+    ax.gridlines(draw_labels=True, alpha=0.5)
+    scalebar = ScaleBar(
+        1, location="lower left", scale_loc="bottom", length_fraction=0.15, units="m"
+    )
+    ax.add_artist(scalebar)
+    ax.text(
+        0.02,
+        0.08,
+        "Datum: WGS84 / UTM 19S",
+        transform=ax.transAxes,
+        fontsize=10,
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
+    ax.annotate(
+        "N",
+        xy=(0.95, 0.95),
+        xycoords="axes fraction",
+        fontsize=14,
+        ha="center",
+        va="center",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+    )
+    ax.arrow(
+        0.95,
+        0.9,
+        0,
+        0.05,
+        head_width=0.01,
+        head_length=0.01,
+        fc="black",
+        ec="black",
+        transform=ax.transAxes,
+    )
 
     # Leyenda manual
     legend_elements = [
