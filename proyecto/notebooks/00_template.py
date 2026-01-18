@@ -76,10 +76,10 @@ RUTA_CENSO_CSV = rutas_archivos["censo_csv"]
 
 def print_status():
     """Imprime el estado de la configuración actual."""
-    print("=== 🌍 Template PEP1 Configurado Exitosamente ===")
-    print(f"📂 Base Dir       : {BASE_DIR}")
-    print(f"💾 GeoDatabase    : {'✅ Encontrada' if RUTA_GPKG.exists() else '❌ No encontrada'}")
-    print(f"📊 Censo CSV      : {'✅ Encontrado' if RUTA_CENSO_CSV.exists() else '❌ No encontrado'}")
+    print("===  Template PEP1 Configurado Exitosamente ===")
+    print(f" Base Dir       : {BASE_DIR}")
+    print(f" GeoDatabase    : {' Encontrada' if RUTA_GPKG.exists() else ' No encontrada'}")
+    print(f" Censo CSV      : {' Encontrado' if RUTA_CENSO_CSV.exists() else ' No encontrado'}")
     print("=================================================")
 
 def load_geodata(path: Path, layer: Optional[str] = None) -> Optional[gpd.GeoDataFrame]:
@@ -91,7 +91,7 @@ def load_geodata(path: Path, layer: Optional[str] = None) -> Optional[gpd.GeoDat
         layer (str, optional): Nombre de la capa (necesario para GPKG).
     """
     if not path.exists():
-        print(f"❌ Error: El archivo no existe -> {path}")
+        print(f" Error: El archivo no existe -> {path}")
         return None
 
     try:
@@ -102,10 +102,10 @@ def load_geodata(path: Path, layer: Optional[str] = None) -> Optional[gpd.GeoDat
             gdf = gpd.read_file(path)
             info_msg = "Archivo"
             
-        print(f"✅ Cargado {info_msg}: {len(gdf)} registros | CRS: {gdf.crs}")
+        print(f" Cargado {info_msg}: {len(gdf)} registros | CRS: {gdf.crs}")
         return gdf
     except Exception as exc:
-        print(f"⚠️ Error crítico al cargar {path}: {exc}")
+        print(f" Error crítico al cargar {path}: {exc}")
         return None
 
 def save_figure(fig, name: str, subdir: Optional[str] = None, dpi: int = 300):
@@ -127,7 +127,7 @@ def save_figure(fig, name: str, subdir: Optional[str] = None, dpi: int = 300):
     metadata = {"Creator": "Grupo 1 Geoinformática"}
     
     fig.savefig(out_path, dpi=dpi, bbox_inches="tight", metadata=metadata)
-    print(f"🖼️  Imagen guardada: {out_path.name}")
+    print(f"  Imagen guardada: {out_path.name}")
 
 # ============================================================================
 # 3. EJECUCIÓN INICIAL

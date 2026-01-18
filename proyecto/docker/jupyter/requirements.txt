@@ -37,6 +37,8 @@ folium==0.15.1
 ipyleaflet==0.18.1
 bokeh==3.3.2
 altair==5.2.0
+cartopy==0.22.0
+matplotlib-scalebar==0.8.1
 streamlit-folium>=0.17.0
 streamlit-option-menu>=0.3.0
 streamlit-navigation-bar>=3.0.0
