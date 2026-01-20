@@ -104,11 +104,12 @@ PERFILES_USUARIO = {
 # ============================================================================
 
 
-@st.cache_data
-def cargar_servicios_unificados(gpkg_path):
+@st.cache_resource
+def cargar_servicios_unificados(gpkg_path, _mtime=None):
     """
     Carga todas las capas, las etiqueta y las une en un solo GeoDataFrame.
-    Usa caché de Streamlit para no recargar en cada interacción.
+    Usa caché de recurso de Streamlit para no recargar ni serializar en cada interacción.
+    El parámetro _mtime se usa para invalidar el caché si el archivo cambia.
     """
     lista_gdfs = []
 
@@ -140,21 +141,21 @@ def cargar_servicios_unificados(gpkg_path):
     return gdf_total
 
 
-def obtener_servicios_en_radio(gdf_servicios, lat, lon, radio_metros=1000):
+@st.cache_data(show_spinner=False)
+def obtener_servicios_en_radio(_gdf_servicios, lat, lon, radio_metros=1000):
     """
     Cuenta cuántos servicios de cada tipo hay alrededor de (lat, lon).
     """
     # 1. Crear punto usuario (WGS84 -> EPSG:32719)
     punto_usuario = gpd.GeoDataFrame(
         geometry=[Point(lon, lat)], crs="EPSG:4326"
-    ).to_crs(gdf_servicios.crs)
+    ).to_crs(_gdf_servicios.crs)
 
     # 2. Crear buffer
     circulo = punto_usuario.buffer(radio_metros).iloc[0]
 
-    # 3. Filtrar espacialmente (usando índice espacial si es posible, pero intersects directo es ok para este tamaño)
-    # Optimización: primero filtrar por bounding box si fuera muy grande, pero aquí intersects está bien
-    servicios_cercanos = gdf_servicios[gdf_servicios.intersects(circulo)]
+    # 3. Filtrar espacialmente
+    servicios_cercanos = _gdf_servicios[_gdf_servicios.intersects(circulo)]
 
     # 4. Contar
     conteo = servicios_cercanos["tipo_servicio"].value_counts().to_dict()
@@ -190,8 +191,9 @@ def obtener_geometrias_servicios_en_radio(gdf_servicios, lat, lon, radio_metros=
     return servicios_cercanos
 
 
+@st.cache_data(show_spinner=False)
 def obtener_servicios_mas_cercanos(
-    gdf_servicios, lat, lon, tipos_faltantes, radio_metros=1000
+    _gdf_servicios, lat, lon, tipos_faltantes, radio_metros=1000
 ):
     """
     Para cada tipo de servicio faltante, encuentra el servicio más cercano fuera del radio.
@@ -200,13 +202,13 @@ def obtener_servicios_mas_cercanos(
     # 1. Crear punto usuario
     punto_usuario = gpd.GeoDataFrame(
         geometry=[Point(lon, lat)], crs="EPSG:4326"
-    ).to_crs(gdf_servicios.crs)
+    ).to_crs(_gdf_servicios.crs)
 
     # 2. Crear buffer
     circulo = punto_usuario.buffer(radio_metros).iloc[0]
 
     # 3. Servicios fuera del radio
-    servicios_fuera_radio = gdf_servicios[~gdf_servicios.intersects(circulo)]
+    servicios_fuera_radio = _gdf_servicios[~_gdf_servicios.intersects(circulo)]
 
     resultados = {}
 
@@ -228,9 +230,9 @@ def obtener_servicios_mas_cercanos(
 
             # Convertir geometría a WGS84
             geom_wgs84 = servicio_mas_cercano.geometry
-            if gdf_servicios.crs != "EPSG:4326":
+            if _gdf_servicios.crs != "EPSG:4326":
                 punto_wgs84 = (
-                    gpd.GeoDataFrame(geometry=[geom_wgs84], crs=gdf_servicios.crs)
+                    gpd.GeoDataFrame(geometry=[geom_wgs84], crs=_gdf_servicios.crs)
                     .to_crs("EPSG:4326")
                     .iloc[0]
                     .geometry

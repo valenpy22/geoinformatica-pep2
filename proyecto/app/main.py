@@ -1012,13 +1012,13 @@ elif seccion == "Calculadora Calidad de Vida":
         st.session_state.lon_calc = -70.6506
 
     # 1. Cargar datos unificados
-    with st.spinner("Cargando motor de cálculo y base de datos de servicios..."):
-        gdf_servicios = calc.cargar_servicios_unificados(RUTA_GPKG)
-        if gdf_servicios.empty:
-            st.error(
-                "No se pudieron cargar los servicios. Verifique geodatabase_proyecto.gpkg"
-            )
-            st.stop()
+    gpkg_mtime = RUTA_GPKG.stat().st_mtime if RUTA_GPKG.exists() else None
+    gdf_servicios = calc.cargar_servicios_unificados(RUTA_GPKG, _mtime=gpkg_mtime)
+    if gdf_servicios.empty:
+        st.error(
+            "No se pudieron cargar los servicios. Verifique geodatabase_proyecto.gpkg"
+        )
+        st.stop()
 
     # Definir colores para servicios
     colores_servicio = {
@@ -1041,6 +1041,27 @@ elif seccion == "Calculadora Calidad de Vida":
         "paradas_micro": "lightgray",
         "paradas_metro_tren": "darkpurple",
     }
+
+    # --- Cálculo Global de Servicios más Cercanos ---
+    # Esto asegura que los datos estén disponibles tanto para el mapa como para la tabla de resultados.
+    servicios_mas_cercanos = {}
+    if st.session_state.get("calc_results"):
+        res_state = st.session_state.calc_results
+        detalles_state = res_state.get("detalles", {})
+        tipos_faltantes = [
+            tipo for tipo, info in detalles_state.items() if info["conteo"] == 0
+        ]
+
+        if tipos_faltantes:
+            curr_lat = st.session_state.lat_calc
+            curr_lon = st.session_state.lon_calc
+            servicios_mas_cercanos = calc.obtener_servicios_mas_cercanos(
+                gdf_servicios,
+                curr_lat,
+                curr_lon,
+                tipos_faltantes,
+                radio_metros=1000,
+            )
 
     col_config, col_map = st.columns([1, 2])
 
@@ -1082,54 +1103,38 @@ elif seccion == "Calculadora Calidad de Vida":
             fill_opacity=0.1,
         ).add_to(m)
 
-        # Agregar servicios más cercanos si existen resultados de cálculo
-        servicios_mas_cercanos = {}
-        if st.session_state.get("calc_results"):
-            res = st.session_state.calc_results
-            detalles = res.get("detalles", {})
-            tipos_faltantes = [
-                tipo for tipo, info in detalles.items() if info["conteo"] == 0
-            ]
+        # Agregar servicios más cercanos al mapa si existen
+        if servicios_mas_cercanos:
+            # Agregar servicios más cercanos al mapa principal
+            for tipo, info in servicios_mas_cercanos.items():
+                color = colores_servicio.get(tipo, "blue")
+                geom = info["geometria"]
 
-            if tipos_faltantes:
-                servicios_mas_cercanos = calc.obtener_servicios_mas_cercanos(
-                    gdf_servicios,
-                    curr_lat,
-                    curr_lon,
-                    tipos_faltantes,
-                    radio_metros=1000,
-                )
+                # Handle geometry types
+                if hasattr(geom, "y") and hasattr(geom, "x"):
+                    lat, lon = geom.y, geom.x
+                else:
+                    centroid = geom.centroid if hasattr(geom, "centroid") else geom
+                    lat, lon = centroid.y, centroid.x
 
-                # Agregar servicios más cercanos al mapa principal
-                for tipo, info in servicios_mas_cercanos.items():
-                    color = colores_servicio.get(tipo, "blue")
-                    geom = info["geometria"]
+                distancia = info["distancia_m"]
 
-                    # Handle geometry types
-                    if hasattr(geom, "y") and hasattr(geom, "x"):
-                        lat, lon = geom.y, geom.x
-                    else:
-                        centroid = geom.centroid if hasattr(geom, "centroid") else geom
-                        lat, lon = centroid.y, centroid.x
+                # Usar estrella para servicios más cercanos
+                folium.Marker(
+                    location=[lat, lon],
+                    popup=f"{tipo.replace('_', ' ').title()}<br>Más cercano: {distancia:.0f}m fuera del radio",
+                    icon=folium.Icon(color=color, icon="star"),
+                ).add_to(m)
 
-                    distancia = info["distancia_m"]
-
-                    # Usar estrella para servicios más cercanos
-                    folium.Marker(
-                        location=[lat, lon],
-                        popup=f"{tipo.replace('_', ' ').title()}<br>Más cercano: {distancia:.0f}m fuera del radio",
-                        icon=folium.Icon(color=color, icon="star"),
-                    ).add_to(m)
-
-                    # Línea punteada desde el punto objetivo al servicio más cercano
-                    folium.PolyLine(
-                        locations=[[curr_lat, curr_lon], [lat, lon]],
-                        color=color,
-                        weight=2,
-                        opacity=0.6,
-                        dash_array="5, 5",
-                        popup=f"Distancia: {distancia:.0f}m",
-                    ).add_to(m)
+                # Línea punteada desde el punto objetivo al servicio más cercano
+                folium.PolyLine(
+                    locations=[[curr_lat, curr_lon], [lat, lon]],
+                    color=color,
+                    weight=2,
+                    opacity=0.6,
+                    dash_array="5, 5",
+                    popup=f"Distancia: {distancia:.0f}m",
+                ).add_to(m)
 
         # Capturar clics
         # Usamos una key dinámica para forzar al mapa a redibujarse cuando cambian las coordenadas
@@ -1149,9 +1154,16 @@ elif seccion == "Calculadora Calidad de Vida":
             ):
                 st.session_state.lat_calc = click_lat
                 st.session_state.lon_calc = click_lng
-                # Actualizar también los inputs directamente (ahora es seguro porque inputs no se han creado aún)
+                # Actualizar también los inputs directamente
                 st.session_state.input_lat = click_lat
                 st.session_state.input_lon = click_lng
+                
+                # Limpiar resultados anteriores para evitar inconsistencias visuales
+                if "calc_results" in st.session_state:
+                    st.session_state.calc_results = None
+                if "calc_error" in st.session_state:
+                    st.session_state.calc_error = None
+                    
                 st.rerun()
 
     with col_config:
@@ -1164,6 +1176,9 @@ elif seccion == "Calculadora Calidad de Vida":
         def update_coords():
             st.session_state.lat_calc = st.session_state.input_lat
             st.session_state.lon_calc = st.session_state.input_lon
+            # Limpiar resultados anteriores
+            st.session_state.calc_results = None
+            st.session_state.calc_error = None
 
         lat_val = st.number_input(
             "Latitud",
@@ -1201,6 +1216,10 @@ elif seccion == "Calculadora Calidad de Vida":
         else:
             st.session_state.calc_results = res
             st.session_state.calc_error = None
+        
+        # Rerun para asegurar que el cálculo global de servicios más cercanos se ejecute
+        # y que el mapa se actualice con las líneas y el marcador correcto.
+        st.rerun()
 
     # Display results if they exist in session state
     if st.session_state.get("calc_results") or st.session_state.get("calc_error"):
@@ -1286,8 +1305,6 @@ elif seccion == "Calculadora Calidad de Vida":
                                     "Conteo": val["conteo"],
                                     "Más Cercano": distancia_cercana,
                                     "Importancia (1-5)": val["importancia"],
-                                    "Aporte Puntos": val["aporte_final"],
-                                    "Score Norm": val["score_norm"],
                                 }
                             )
                         df_falt = pd.DataFrame(rows_falt).sort_values("Servicio")
