@@ -14,6 +14,7 @@ Este repositorio se levanta con **Docker Compose** e incluye:
 ## 0) Requisitos
 
 - Docker + Docker Compose v2 (`docker compose ...`)
+- Git LFS (debe estar instalado y configurado)
 - Puertos libres: **5432** (PostGIS), **8888** (Jupyter), **8501** (Streamlit), **8080** (OTP), **5050** (pgAdmin)
 - (Opcional) QGIS para visualizar el GeoPackage.
 
