@@ -180,11 +180,57 @@ Notebook 04 – Machine Learning
 
 - usar cod_comuna como llave (normalizar CUT_COM -> cod_comuna)
 
-Notebook 05 – Results synthesis
+ Notebook 05 – Results synthesis
 
-- recalcula “desiertos” y métricas desde el parquet y clusters
+ - recalcula "desiertos" y métricas desde el parquet y clusters
 
-## 7) Troubleshooting rápido
+ Notebook 06 – Backend Calculator
+
+ - desarrollo y pruebas de la calculadora de calidad de vida
+
+ ## 6) Calculadora de Calidad de Vida
+
+ La aplicación incluye una **calculadora de calidad de vida** accesible en la interfaz Streamlit.
+
+ ### Cómo Usar la Calculadora
+
+ 1. **Accede a la aplicación**: Ve a http://localhost:8501 en tu navegador.
+
+ 2. **Navega a la pestaña**: Selecciona la pestaña "Calculadora de Calidad de Vida".
+
+ 3. **Configura el cálculo**:
+    - **Selecciona un perfil**: Elige entre "Estudiante", "Adulto Mayor" o "Familia Joven". Cada perfil tiene prioridades diferentes basadas en servicios relevantes.
+    - **Ingresa coordenadas**: Proporciona la latitud y longitud de la ubicación deseada. Puedes usar inputs numéricos o hacer clic en el mapa para seleccionar una posición.
+
+ 4. **Interacción con el mapa**:
+    - El mapa muestra la ubicación seleccionada con un marcador rojo.
+    - Se dibuja un círculo azul de 1 km de radio para visualizar el área de análisis.
+    - Después de calcular, se muestran los servicios más cercanos si faltan algunos en el radio.
+
+ 5. **Calcula el índice**: Presiona el botón "🚀 Calcular Índice" para obtener el resultado.
+
+ ### Cómo se Calcula el Puntaje
+
+ El índice de calidad de vida (0-100) se calcula de la siguiente manera:
+
+ - **Radio de análisis**: Se evalúan los servicios dentro de un radio de 1000 metros alrededor de la ubicación seleccionada.
+
+ - **Perfiles de usuario**: Cada perfil asigna pesos diferentes a los servicios, reflejando prioridades específicas:
+   - **Estudiante**: Prioriza educación superior, transporte público, bancos, etc.
+   - **Adulto Mayor**: Enfocado en salud, farmacias, áreas verdes, seguridad.
+   - **Familia Joven**: Colegios, parques, supermercados, seguridad.
+
+ - **Normalización y ponderación**:
+   - Para cada servicio, se cuenta la cantidad disponible en el radio.
+   - El conteo se normaliza a un puntaje entre 0 y 1 (basado en rangos típicos).
+   - Se multiplica por el peso del perfil para obtener el aporte.
+   - Se suman todos los aportes ponderados y se dividen por la suma de pesos máximos, luego se multiplica por 100 para obtener el índice final.
+
+ - **Resultado**: Un puntaje alto indica una ubicación óptima para el perfil seleccionado, considerando accesibilidad a servicios esenciales.
+
+ Los detalles del cálculo (conteo, puntaje normalizado, importancia, aporte) se muestran para cada servicio.
+
+ ## 7) Troubleshooting rápido
 Ver contenedores
 ```bash
 docker ps
